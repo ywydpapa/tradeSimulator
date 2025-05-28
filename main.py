@@ -25,6 +25,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 import httpx
 import websockets
 import json
+from aiTrader.activetracer import *
 
 dotenv.load_dotenv()
 DATABASE_URL = os.getenv("dburl")
@@ -356,7 +357,7 @@ async def private_page(request: Request, user_session: int = Depends(require_log
 
 @app.on_event("startup")
 async def startup_event():
-    # asyncio.create_task(update_tradetrend())
+    asyncio.create_task(periodic_main_trade())
     return True
 
 
