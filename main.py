@@ -595,6 +595,18 @@ async def restwallet(request: Request, uno: int, db: AsyncSession = Depends(get_
         print("Get Balance Error!!", e)
         return JSONResponse({"success": False})
 
+@app.get("/restsetup/{uno}")
+async def restsetup(request: Request, uno: int, db: AsyncSession = Depends(get_db)):
+    try:
+        mysets = await get_trsetups(uno,db)
+        if mysets:
+            return JSONResponse({"success": True, "data": mysets})
+        else:
+            return JSONResponse({"success": False})
+    except Exception as e:
+        print("Get Setup Error!!", e)
+        return JSONResponse({"success": False})
+
 
 @app.post("/tradesellmarket/{uno}/{coinn}/{cprice}/{volum}")
 async def tradesellmarket(request: Request, uno: int, coinn: str, cprice: float, volum: float,

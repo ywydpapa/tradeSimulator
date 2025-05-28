@@ -299,7 +299,6 @@ def analyze_cross_with_peak_and_vwma(
     else:
         print("→ 아직 매수 신호 아님(최저가 상승 미달, long VWMA 접근 미달)")
 
-
 def get_wallet(uno):
     url = f'http://ywydpapa.iptime.org:8000/restwallet/{uno}'
     response = requests.get(url)
@@ -307,32 +306,14 @@ def get_wallet(uno):
     return data
 
 
-def get_setup(uno):
-    url = f'http://ywydpapa.iptime.org:8000/restsetup/{uno}'
-    response = requests.get(url)
-    data = response.json()
-    return data
-
-
 def buy_crypto(ticker,uno):
-    url = f'http://ywydpapa.iptime.org:8000/restbuymarket/{uno}/{ticker}'
+    url = f'http://ywydpapa.iptime.org:8000/restbuymarket{uno}/{ticker}'
     response = requests.get(url)
-    return response
 
 
-def sell_crypto(ticker,uno):
-    url = f'http://ywydpapa.iptime.org:8000/restsellmarket/{uno}/{ticker}'
-    response = requests.get(url)
-    return response
-
-
-async def main_trade(uno):
-    setups = await get_setup(uno)
-    for setup in setups:
-        print(setup)
-
-
+# 사용 예시
 while True:
+
     ticker = 'KRW-SUI'
     peak_trade(ticker, 1, 20, 200, '30m')
     print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -347,8 +328,4 @@ while True:
     wallteitems = wallets['data']['wallet_list']
     for witem in wallteitems:
         print(witem[9])
-    setups = get_setup(1)
-    print(setups)
     time.sleep(60)
-
-
