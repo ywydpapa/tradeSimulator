@@ -62,7 +62,7 @@ async def get_db():
         yield session
 
 
-async def get_current_price():
+async def get_current_prices():
     server_url = "https://api.upbit.com"
     params = {"quote_currencies": "KRW"}
     res = requests.get(server_url + "/v1/ticker/all", params=params)
@@ -72,6 +72,20 @@ async def get_current_price():
         market = item.get("market")
         trade_price = item.get("trade_price")
         if market and trade_price:
+            result.append({"market": market, "trade_price": trade_price})
+    return result
+
+
+async def get_current_price(coinn):
+    server_url = "https://api.upbit.com"
+    params = {"quote_currencies": "KRW"}
+    res = requests.get(server_url + "/v1/ticker/all", params=params)
+    data = res.json()
+    result = []
+    for item in data:
+        market = item.get("market")
+        trade_price = item.get("trade_price")
+        if market and trade_price and market == coinn:
             result.append({"market": market, "trade_price": trade_price})
     return result
 
@@ -246,7 +260,7 @@ async def get_current_balance(uno, db: AsyncSession = Depends(get_db)):
         result = await db.execute(query, {"uno": uno, "attxx": "%XXX%"})
         mycoins = result.fetchall()
         coinprice = {}
-        gcprice = await get_current_price()
+        gcprice = await get_current_prices()
         price_dict = {item['market']: item['trade_price'] for item in gcprice}
         for coin in mycoins:
             if coin[5] != "KRW":
@@ -513,6 +527,44 @@ async def tradebuymarket(
     except Exception as e:
         print("Error!!", e)
         return JSONResponse({"success": False, "message": "서버 오류", "redirect": "/tradecenter"})
+
+@app.get("/resttradebuymarket/{uno}/{coinn}")
+async def resttradebuymarket(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
+    try:
+        mysets = await get_trsetups(uno,db)
+        if mysets:
+            for myset in mysets:
+                if myset["coinName"] == coinn and myset["useYN"] == "Y":
+                    amt = myset["stepAmt"]
+                    cprice = await get_current_price(coinn)
+                    price = cprice[0]['trade_price']
+                    volum = float(amt) / float(price)
+                    await buy_crypto(request, uno, coinn, price, volum, db)
+                    return JSONResponse({"success": True})
+                else:
+                    print("설정 없음")
+        else:
+            print("설정 없음")
+    except Exception as e:
+        print("Buy Error!!", e)
+        return JSONResponse({"success": False})
+
+@app.get("/resttradesellmarket/{uno}/{coinn}")
+async def resttradesellmarket(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
+    try:
+        mycoins = await get_current_balance(uno,db)
+        coin_list, coin_dict = mycoins
+        for mycoin in coin_list:
+            if mycoin[5] == coinn:
+                amt = mycoin[9]
+                cprice = await get_current_price(coinn)
+                price = cprice[0]['trade_price']
+                volum = float(amt)
+                await sell_crypto(request, uno, coinn, price, volum, db)
+                return JSONResponse({"success": True})
+    except Exception as e:
+        print("Sell Error!!", e)
+        return JSONResponse({"success": False})
 
 
 @app.post("/tradesellmarket/{uno}/{coinn}/{cprice}/{volum}")

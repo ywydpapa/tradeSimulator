@@ -58,7 +58,7 @@ def peak_trade(
     response = requests.get(url)
     data = response.json()
     df = pd.DataFrame(data)
-    df['candle_date_time_kst'] = pd.to_datetime(df['candle_date_time_kst'])
+    df['candle_date_time_kst'] = pd.to_datetime(df['candle_date_time_kst'], format='%Y-%m-%dT%H:%M:%S')
     df.set_index('candle_date_time_kst', inplace=True)
     df = df.sort_index(ascending=True)
     df = df[['trade_price', 'candle_acc_trade_volume']]
@@ -107,7 +107,6 @@ def peak_trade(
     df['stoch_k'] = stoch_k
     df['stoch_d'] = stoch_d
 
-    # --- 그래프 그리기 ---
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(24, 12), sharex=True, gridspec_kw={'height_ratios': [3, 1]})
 
     valid_idx = df.index[df[f'VWMA_{long_window}'].notna()]
@@ -123,6 +122,26 @@ def peak_trade(
     ax1.grid(True)
     ax1.legend()
 
+    # === 마지막 10개 값의 방향 막대 추가 ===
+    last10_idx = df.index[-10:]
+    last10_prices = df['trade_price'].iloc[-10:]
+    price_diff = last10_prices.diff().fillna(0)
+    circle_colors = ['green' if d > 0 else 'red' if d < 0 else 'gray' for d in price_diff]
+
+    circle_y = df['trade_price'].min() - (df['trade_price'].max() - df['trade_price'].min()) * 0.05
+
+    ax1.scatter(
+        last10_idx,
+        [circle_y] * 10,
+        s=400,
+        color=circle_colors,
+        marker='o',
+        edgecolors='black',
+        linewidths=1.5,
+        label='Last 10 Change Signal'
+    )
+    # =======================
+
     # STOCH RSI
     ax2.plot(df.index, df['stoch_k'], label='StochRSI %K', color='purple')
     ax2.plot(df.index, df['stoch_d'], label='StochRSI %D', color='magenta', linestyle='--')
@@ -135,6 +154,7 @@ def peak_trade(
 
     plt.tight_layout()
     plt.show()
+    plt.close()
 
     # 최근 크로스 판단
     recent = df.tail(5)
@@ -281,7 +301,11 @@ def analyze_cross_with_peak_and_vwma(
 
 # 사용 예시
 while True:
-    ticker = 'KRW-XRP'
-    peak_trade(ticker, 1, 45, 200, '3m')
+    ticker = 'KRW-SUI'
+    peak_trade(ticker, 1, 20, 200, '30m')
     print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    time.sleep(45)
+    peak_trade(ticker, 1, 20, 200, '3m')
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    peak_trade(ticker, 1, 20, 200, '1m')
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    time.sleep(180)
