@@ -528,7 +528,7 @@ async def tradebuymarket(
         print("Error!!", e)
         return JSONResponse({"success": False, "message": "서버 오류", "redirect": "/tradecenter"})
 
-@app.get("/resttradebuymarket/{uno}/{coinn}")
+@app.get("/restbuymarket/{uno}/{coinn}")
 async def resttradebuymarket(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
     try:
         mysets = await get_trsetups(uno,db)
@@ -549,7 +549,7 @@ async def resttradebuymarket(request:Request, uno: int, coinn: str, db: AsyncSes
         print("Buy Error!!", e)
         return JSONResponse({"success": False})
 
-@app.get("/resttradesellmarket/{uno}/{coinn}")
+@app.get("/restsellmarket/{uno}/{coinn}")
 async def resttradesellmarket(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
     try:
         mycoins = await get_current_balance(uno,db)
@@ -564,6 +564,35 @@ async def resttradesellmarket(request:Request, uno: int, coinn: str, db: AsyncSe
                 return JSONResponse({"success": True})
     except Exception as e:
         print("Sell Error!!", e)
+        return JSONResponse({"success": False})
+
+def tuple_to_list_with_datetime(t):
+    result = []
+    for item in t:
+        if isinstance(item, datetime):
+            result.append(item.strftime("%Y-%m-%d %H:%M:%S"))
+        else:
+            result.append(item)
+    return result
+
+@app.get("/restwallet/{uno}")
+async def restwallet(request: Request, uno: int, db: AsyncSession = Depends(get_db)):
+    try:
+        myassets = await get_current_balance(uno, db)
+        wallet_list, wallet_dict = myassets
+
+        # 튜플을 리스트로, datetime은 문자열로 변환
+        wallet_list = [tuple_to_list_with_datetime(row) for row in wallet_list]
+
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "wallet_list": wallet_list,
+                "wallet_dict": wallet_dict
+            }
+        })
+    except Exception as e:
+        print("Get Balance Error!!", e)
         return JSONResponse({"success": False})
 
 
