@@ -375,5 +375,4 @@ async def periodic_main_trade():
         await asyncio.sleep(60)
 
 
-
-
+asyncio.run(periodic_main_trade())
