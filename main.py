@@ -20,12 +20,11 @@ import requests
 import jinja2
 from datetime import datetime
 from aiTrader.vwmatrend import vwma_ma_cross_and_diff_noimage
-from aiTrader.cprice import all_cprice
 from fastapi import WebSocket, WebSocketDisconnect
 import httpx
 import websockets
 import json
-from aiTrader.activetracer import *
+
 
 dotenv.load_dotenv()
 DATABASE_URL = os.getenv("dburl")
