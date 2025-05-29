@@ -357,7 +357,7 @@ async def private_page(request: Request, user_session: int = Depends(require_log
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(periodic_main_trade())
+    # asyncio.create_task(periodic_main_trade())
     return True
 
 

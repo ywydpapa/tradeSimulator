@@ -95,5 +95,3 @@ def check_orderbook(ticker, wall_threshold=2):
                 print(f"  매도벽➡️: 가격 {ask_prices[idx]:,.0f}, 수량 {size:.4f}")
         else:
             print("  매도벽 없음")
-
-check_orderbook("KRW-SUI")
