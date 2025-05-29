@@ -222,6 +222,7 @@ def analyze_cross_with_peak_and_vwma(
     down_threshold=0.015,
     close_threshold=0.001
 ):
+    subtrguide = None
     # 1. 구간 결정
     if last_cross_type is not None and last_cross_time is not None:
         # 크로스가 있으면, 크로스 이후 데이터만 사용
