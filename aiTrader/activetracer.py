@@ -98,55 +98,9 @@ def peak_trade(
     df['stoch_k'] = stoch_k
     df['stoch_d'] = stoch_d
 
-    # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(24, 12), sharex=True, gridspec_kw={'height_ratios': [3, 1]})
-    # valid_idx = df.index[df[f'VWMA_{long_window}'].notna()]
-    # ax1.plot(df['trade_price'], label='Price')
-    # ax1.plot(valid_idx, df.loc[valid_idx, f'VWMA_{short_window}'], label=f'VWMA {short_window}', color='blue')
-    # ax1.plot(valid_idx, df.loc[valid_idx, f'VWMA_{long_window}'], label=f'VWMA {long_window}', color='orange')
-    # ax1.scatter(golden_cross.index, golden_cross[f'VWMA_{short_window}'], color='green', label='Golden Cross',
-    #             marker='o', s=100)
-    # ax1.scatter(dead_cross.index, dead_cross[f'VWMA_{short_window}'], color='red', label='Dead Cross', marker='x',
-    #             s=100)
-    # ax1.set_title(f'{ticker} VWMA Cross Points ({candle_unit})')
-    # ax1.set_ylabel('Price')
-    # ax1.grid(True)
-    # ax1.legend()
-    # # === 마지막 10개 값의 방향 막대 추가 ===
-    # last10_idx = df.index[-10:]
-    # last10_prices = df['trade_price'].iloc[-10:]
-    # price_diff = last10_prices.diff().fillna(0)
-    # circle_colors = ['green' if d > 0 else 'red' if d < 0 else 'gray' for d in price_diff]
-    # circle_y = df['trade_price'].min() - (df['trade_price'].max() - df['trade_price'].min()) * 0.05
-    # ax1.scatter(
-    #     last10_idx,
-    #     [circle_y] * 10,
-    #     s=400,
-    #     color=circle_colors,
-    #     marker='o',
-    #     edgecolors='black',
-    #     linewidths=1.5,
-    #     label='Last 10 Change Signal'
-    # )
-    # =======================
-    # STOCH RSI
-    # ax2.plot(df.index, df['stoch_k'], label='StochRSI %K', color='purple')
-    # ax2.plot(df.index, df['stoch_d'], label='StochRSI %D', color='magenta', linestyle='--')
-    # ax2.axhline(0.8, color='red', linestyle=':', alpha=0.5)
-    # ax2.axhline(0.2, color='blue', linestyle=':', alpha=0.5)
-    # ax2.set_ylabel('StochRSI')
-    # ax2.set_ylim(-0.05, 1.05)
-    # ax2.legend()
-    # ax2.grid(True)
-    # plt.tight_layout()
-    # plt.show()
-    # plt.close()
-
     # 최근 크로스 판단
     recent = df.tail(5)
-    # print("최근 5개 캔들")
-    # print(recent[['trade_price', f'VWMA_{short_window}', f'VWMA_{long_window}']])
 
-    # 최근 크로스 판단
     now = df.index[-1]
     now_price = df['trade_price'].iloc[-1]
     golden_times = golden_cross.index[golden_cross.index <= now]
