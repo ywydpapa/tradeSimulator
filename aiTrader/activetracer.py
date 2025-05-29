@@ -299,6 +299,7 @@ async def main_trade(uno):
             print("로드된 설정 코인 :", coinn)
             wallets = await get_wallet(uno)
             walltems = wallets['data']['wallet_list']  # 지갑내 코인 로드
+            avgprice = wallets['data']['wallet_dict']
             remaincoin = 0
             trade_state = 'BID'  # 기본값: 지갑에 없다고 가정
             found = False
@@ -312,6 +313,7 @@ async def main_trade(uno):
                         trade_state = 'BID'
                     break
             print("지갑내 코인 : ", remaincoin)
+            print("매수 평균가 :", float(avgprice.get(coinn, 0.0)))
             print("매매 전략 :", trade_state)
             print("3m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~3m")
             short_position = peak_trade(coinn, 1, 20, 200, '3m')
