@@ -175,24 +175,24 @@ def peak_trade(
     recent_dead = [idx for idx in dead_cross.index if idx in recent3_idx]
     recent_golden_5 = [idx for idx in golden_cross.index if idx in recent5_idx]
     recent_dead_5 = [idx for idx in dead_cross.index if idx in recent5_idx]
-    trguide = None
+    trguide = "BHOLD"
     if recent_golden_5 and recent_dead_5:
         print("최근 5개 캔들에 골든/데드가 모두 있습니다. 매매 대기!")
         trguide = "HOLD"
-        return
+        return trguide, None
     if recent_golden:
         print("최근 3개 캔들에 골든크로스 발생! 매수 신호! 보유하고 있지 않다면 매수")
         now_price = df['trade_price'].iloc[-1]
         volum = 500000 / now_price
         print(f"매수 실행: {now_price}에 {volum:.6f}코인")
         trguide = "BUY"
-        return
+        return trguide, None
     if recent_dead:
         print("최근 3개 캔들에 데드크로스 발생! 매도 신호! 보유중인 코인 판매")
         now_price = df['trade_price'].iloc[-1]
         print(f"매도 실행: {now_price}에 보유코인 전량")
         trguide = "SELL"
-        return
+        return trguide, None
     if last_cross_type is not None:
         up_threshold = abs(avg_up_rate) * 2.5 / 100
         down_threshold = abs(avg_down_rate) * 2.5 / 100
@@ -204,10 +204,11 @@ def peak_trade(
             down_threshold=down_threshold,
             close_threshold=0.001
         )
+        print(trend[1])
     else:
         print("아직 골든/데드 크로스가 없습니다.")
-        trend = None
-    return trguide
+        return trguide, None
+    return trguide, trend[1]
 
 
 
@@ -268,18 +269,21 @@ def analyze_cross_with_peak_and_vwma(
     if fall_rate >= down_threshold:
         print(f"→ {down_threshold * 100:.1f}% 이상 하락! 매도 신호!")
         print(f"→최고가 대비  {down_threshold * 100:.1f}% 이상 하락으로 보유 코인 전액 현재가 {now_price} 매도 실행!")
+        subtrguide = "SELL"
     elif vwma_gap <= close_threshold:
         print(f"→ 가격이 long VWMA({long_window})와 0.1% 이내로 접근! 추가 매도 신호!")
         print(f"→ 가격이 long VWMA({long_window})와 0.1% 이내로 접근 보유코인이 있을 경우 전액 현재가 {now_price} 매도 실행!")
+        subtrguide = "SELL"
     else:
         print("→ 아직 매도 신호 아님(최고가 하락 미달, long VWMA 접근 미달)")
-
     if rise_rate >= up_threshold:
         print(f"→최저가 대비  {up_threshold * 100:.1f}% 이상 상승! 매수 신호!")
         print(f"현재가 {now_price}로 500,000원 매수")
+        subtrguide = "BUY"
     elif vwma_gap <= close_threshold:
         print(f"→ 가격이 long VWMA({long_window})와 0.1% 이내로 접근! 추가 매수 신호!")
         print(f"보유 코인 없을 경우 현재가 {now_price}로 매수")
+        subtrguide = "BUY"
     else:
         print("→ 아직 매수 신호 아님(최저가 상승 미달, long VWMA 접근 미달)")
     vwma_long_series = df.loc[last_cross_time:][f'VWMA_{long_window}']
@@ -298,7 +302,7 @@ def analyze_cross_with_peak_and_vwma(
         print(f"[추가분석] 크로스 이후 VWMA{long_window}는 '{trend}'입니다.")
     else:
         print(f"[추가분석] VWMA{long_window} 데이터가 충분하지 않습니다.")
-    return trend
+    return trend, subtrguide
 
 
 async def get_wallet(uno):
@@ -356,15 +360,21 @@ async def main_trade(uno):
             print("매매 전략 :", trade_state)
             print("3m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~3m")
             short_position = peak_trade(coinn, 1, 20, 200, '3m')
-            print(short_position)
-            if trade_state == 'BID' and short_position == 'BUY':
+            print("short_position",short_position)
+            if trade_state == 'BID' and short_position[0] == 'BUY':
                 buy_response = await buy_crypto(coinn,uno)
                 print(buy_response)
-            elif trade_state == 'ASK' and short_position == 'SELL':
+            elif trade_state == 'BID' and short_position[1] == 'BUY':
+                buy_response = await buy_crypto(coinn,uno)
+                print(buy_response)
+            elif trade_state == 'ASK' and short_position[0] == 'SELL':
+                sell_response = await sell_crypto(coinn,uno)
+                print(sell_response)
+            elif trade_state == 'ASK' and short_position[1] == 'SELL':
                 sell_response = await sell_crypto(coinn,uno)
                 print(sell_response)
             else:
-                print("매매시점 대기중")
+                print("매매시점 대기중", trade_state, short_position)
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     except Exception as e:
         print(e)
@@ -375,4 +385,4 @@ async def periodic_main_trade():
         await asyncio.sleep(60)
 
 
-# asyncio.run(periodic_main_trade())
+asyncio.run(periodic_main_trade())

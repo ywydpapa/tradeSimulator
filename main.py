@@ -181,6 +181,8 @@ async def buy_crypto(request, uno, coinn, price, volum, db: AsyncSession = Depen
         costfee = costkrw * 0.0005
         totalcost = costkrw + costfee
         seckey = request.session.get("setupKey")
+        if seckey is None:
+            seckey = await get_seckey(uno, db)
         wallets = await get_current_balance(uno, db)
         for wallet in wallets[0]:
             if wallet[5] == "KRW":
@@ -214,6 +216,17 @@ async def buy_crypto(request, uno, coinn, price, volum, db: AsyncSession = Depen
     return True
 
 
+async def get_seckey(uno:int, db: AsyncSession = Depends(get_db)):
+    try:
+        query = text("select setupKey from trUser where userNo = :uno")
+        result = await db.execute(query, {"uno": uno})
+        skey = result.fetchone()
+        return skey[0]
+    except Exception as e:
+        print("Error!!", e)
+        return None
+
+
 async def sell_crypto(request, uno, coinn, price, volum, db: AsyncSession = Depends(get_db)):
     global walletkrw, walletvolum
     try:
@@ -222,6 +235,8 @@ async def sell_crypto(request, uno, coinn, price, volum, db: AsyncSession = Depe
         costfee = costkrw * 0.0005
         totalcost = costkrw - costfee
         seckey = request.session.get("setupKey")
+        if seckey is None:
+            seckey = await get_seckey(uno, db)
         wallets = await get_current_balance(uno, db)
         for wallet in wallets[0]:
             if wallet[5] == "KRW":
