@@ -921,3 +921,46 @@ async def insert_setup(uno: int, coinn: str, setamont: float, user_session: int 
     await db.execute(query, {"uno": uno, "coinn": coinn, "setamt": setamont, "maxamt": setamont})
     await db.commit()
     return RedirectResponse(url=f"/tradesetup/{uno}", status_code=303)
+
+UPBIT_CANDLE_URL = "https://api.upbit.com/v1/candles/seconds"
+MARKET = "KRW-WCT"
+
+async def fetch_latest_candle():
+    async with httpx.AsyncClient() as client:
+        params = {"market": MARKET, "count": 1}
+        response = await client.get(UPBIT_CANDLE_URL, params=params)
+        response.raise_for_status()
+        return response.json()[0]
+
+async def fetch_latest_candle():
+    async with httpx.AsyncClient() as client:
+        params = {"market": MARKET, "count": 1}
+        response = await client.get(UPBIT_CANDLE_URL, params=params)
+        response.raise_for_status()
+        return response.json()[0]
+
+@app.get("/ws-chart", response_class=HTMLResponse)
+async def get_chart(request: Request):
+    return templates.TemplateResponse("chart.html", {"request": request})
+
+@app.websocket("/ws/upbit-candle")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            candle = await fetch_latest_candle()
+            data = {
+                "timestamp": candle["candle_date_time_kst"],
+                "open": candle["opening_price"],
+                "high": candle["high_price"],
+                "low": candle["low_price"],
+                "close": candle["trade_price"],
+                "volume": candle["candle_acc_trade_volume"]
+            }
+            await websocket.send_text(json.dumps(data))
+            await asyncio.sleep(5)
+    except Exception as e:
+        print("WebSocket 종료:", e)
+    finally:
+        await websocket.close()
+

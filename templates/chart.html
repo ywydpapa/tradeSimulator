@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>업비트 1분봉 실시간 차트</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body { font-family: sans-serif; }
+      #chart-container { width: 700px; margin: 30px auto; }
+    </style>
+</head>
+<body>
+    <h2 style="text-align:center;">업비트 1분봉 실시간 차트 (KRW-WCT)</h2>
+    <div id="chart-container">
+        <canvas id="candleChart" width="700" height="400"></canvas>
+    </div>
+    <script>
+        const ws = new WebSocket(`ws://${location.host}/ws/upbit-candle`);
+        const labels = [];
+        const closes = [];
+        const maxPoints = 30;
+
+        const ctx = document.getElementById('candleChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Close',
+                    data: closes,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: false,
+                    tension: 0.1,
+                }]
+            },
+            options: {
+                responsive: false,
+                scales: {
+                    x: { display: true, title: { display: true, text: '시간' }},
+                    y: { display: true, title: { display: true, text: '가격' }}
+                }
+            }
+        });
+
+        ws.onmessage = function(event) {
+            const candle = JSON.parse(event.data);
+            const time = candle.timestamp.slice(11, 16); // HH:MM
+            labels.push(time);
+            closes.push(candle.close);
+
+            if (labels.length > maxPoints) {
+                labels.shift();
+                closes.shift();
+            }
+            chart.update();
+        };
+    </script>
+</body>
+</html>

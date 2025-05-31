@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import find_peaks
 import time
+from prophet import Prophet
 
 
 def compute_stoch_rsi(series, window=14, smooth_k=3, smooth_d=3):
@@ -98,9 +99,36 @@ def peak_trade(
     df['stoch_k'] = stoch_k
     df['stoch_d'] = stoch_d
 
+    #AI 신호예측 부분
+    trsignal = ''
+    try:
+        freq = 'h' if 'h' in candle_unit else 'min'
+        future_price = predict_future_price(df, periods=3, freq=freq)
+        now_price = df['trade_price'].iloc[-1]
+        pred_rate = (future_price - now_price) / now_price * 100
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        print(f"현재가: {now_price:.2f}, 3캔들 뒤 예측가: {future_price:.2f}")
+        print(f"예측 변화율: {pred_rate:.3f}%")
+        print(f"상승봉 평균 변화율: {avg_up_rate:.3f}%")
+        print(f"하강봉 평균 변화율: {avg_down_rate:.3f}%")
+        # 3. 비교 및 신호 판단
+        if pred_rate > avg_up_rate:
+            print("예측 변화율이 상승봉 평균 변화율보다 높음 → 강한 매수 신호!")
+            trsignal = 'BUY'
+            # 필요시 trguide = 'BUY'
+        elif pred_rate < avg_down_rate:
+            print("예측 변화율이 하강봉 평균 변화율보다 낮음 → 강한 매도 신호!")
+            trsignal = 'SELL'
+            # 필요시 trguide = 'SELL'
+        else:
+            print("예측 변화율이 평균 변화율 범위 내 → 특별 신호 없음")
+            trsignal = 'HOLD'
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+    except Exception as e:
+        print("예측 실패:", e)
+
     # 최근 크로스 판단
     recent = df.tail(5)
-
     now = df.index[-1]
     now_price = df['trade_price'].iloc[-1]
     golden_times = golden_cross.index[golden_cross.index <= now]
@@ -162,7 +190,7 @@ def peak_trade(
     else:
         print("아직 골든/데드 크로스가 없습니다.")
         return trguide, None
-    return trguide, trend[1]
+    return trguide, trend[1], trsignal
 
 
 
@@ -287,6 +315,18 @@ async def sell_crypto(ticker,uno):
     return response
 
 
+def predict_future_price(df, periods=3, freq='3min'):
+    prophet_df = df.reset_index()[['candle_date_time_kst', 'trade_price']].rename(
+        columns={'candle_date_time_kst': 'ds', 'trade_price': 'y'}
+    )
+    model = Prophet(daily_seasonality=False, yearly_seasonality=False)
+    model.fit(prophet_df)
+    future = model.make_future_dataframe(periods=periods, freq=freq)
+    forecast = model.predict(future)
+    future_price = forecast['yhat'].iloc[-periods:].mean()
+    return future_price
+
+
 async def main_trade(uno):
     try:
         setups = await get_setup(uno)
@@ -308,9 +348,9 @@ async def main_trade(uno):
                     remaincoin = witem[9]
                     found = True
                     if remaincoin > 0:
-                        trade_state = 'ASK'
+                        trade_state = 'SELL'
                     else:
-                        trade_state = 'BID'
+                        trade_state = 'BUY'
                     break
             print("지갑내 코인 : ", remaincoin)
             print("매수 평균가 :", float(avgprice.get(coinn, 0.0)))
@@ -318,20 +358,15 @@ async def main_trade(uno):
             print("3m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~3m")
             short_position = peak_trade(coinn, 1, 20, 200, '3m')
             print("short_position",short_position)
-            if trade_state == 'BID' and short_position[0] == 'BUY':
-                buy_response = await buy_crypto(coinn,uno)
-                print(buy_response)
-            elif trade_state == 'BID' and short_position[1] == 'BUY':
-                buy_response = await buy_crypto(coinn,uno)
-                print(buy_response)
-            elif trade_state == 'ASK' and short_position[0] == 'SELL':
-                sell_response = await sell_crypto(coinn,uno)
-                print(sell_response)
-            elif trade_state == 'ASK' and short_position[1] == 'SELL':
-                sell_response = await sell_crypto(coinn,uno)
-                print(sell_response)
+            if trade_state != short_position[2]:
+                print("트렌드와 예측 신호가 다르므로 매매하지 않습니다.")
             else:
-                print("매매시점 대기중", trade_state, short_position)
+                if trade_state == 'ASK' and short_position[2] == 'SELL':
+                    sell_response = await sell_crypto(coinn, uno)
+                    print(sell_response)
+                elif trade_state == 'BID' and short_position[2] == 'BUY':
+                    buy_response = await buy_crypto(coinn, uno)
+                    print(buy_response)
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     except Exception as e:
         print(e)
