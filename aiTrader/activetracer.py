@@ -161,20 +161,20 @@ def peak_trade(
     if recent_golden_5 and recent_dead_5:
         print("최근 5개 캔들에 골든/데드가 모두 있습니다. 매매 대기!")
         trguide = "HOLD"
-        return trguide, None
+        return trguide, None, None
     if recent_golden:
         print("최근 3개 캔들에 골든크로스 발생! 매수 신호! 보유하고 있지 않다면 매수")
         now_price = df['trade_price'].iloc[-1]
         volum = 500000 / now_price
         print(f"매수 실행: {now_price}에 {volum:.6f}코인")
         trguide = "BUY"
-        return trguide, None
+        return trguide, None, 'BUY'
     if recent_dead:
         print("최근 3개 캔들에 데드크로스 발생! 매도 신호! 보유중인 코인 판매")
         now_price = df['trade_price'].iloc[-1]
         print(f"매도 실행: {now_price}에 보유코인 전량")
         trguide = "SELL"
-        return trguide, None
+        return trguide, None, 'SELL'
     if last_cross_type is not None:
         up_threshold = abs(avg_up_rate) * 2.5 / 100
         down_threshold = abs(avg_down_rate) * 2.5 / 100
@@ -189,9 +189,8 @@ def peak_trade(
         print(trend[1])
     else:
         print("아직 골든/데드 크로스가 없습니다.")
-        return trguide, None
+        return trguide, None, trsignal
     return trguide, trend[1], trsignal
-
 
 
 def analyze_cross_with_peak_and_vwma(
@@ -247,7 +246,7 @@ def analyze_cross_with_peak_and_vwma(
     print(f"최고가: {max_price:.2f} ({max_time}), 최저가: {min_price:.2f} ({min_time}), 현재가: {now_price:.2f}")
     print(f"최고가 대비 하락률: {fall_rate * 100:.2f}%")
     print(f"최저가 대비 상승률: {rise_rate * 100:.2f}%")
-
+    subtrguide = "HOLD"
     # 신호 판단 (최고점/최저점 모두 체크)
     if fall_rate >= down_threshold:
         print(f"→ {down_threshold * 100:.1f}% 이상 하락! 매도 신호!")
@@ -341,7 +340,7 @@ async def main_trade(uno):
             walltems = wallets['data']['wallet_list']  # 지갑내 코인 로드
             avgprice = wallets['data']['wallet_dict']
             remaincoin = 0
-            trade_state = 'BID'  # 기본값: 지갑에 없다고 가정
+            trade_state = 'BUY'  # 기본값: 지갑에 없다고 가정
             found = False
             for witem in walltems:
                 if coinn == witem[5]:
@@ -361,10 +360,10 @@ async def main_trade(uno):
             if trade_state != short_position[2]:
                 print("트렌드와 예측 신호가 다르므로 매매하지 않습니다.")
             else:
-                if trade_state == 'ASK' and short_position[2] == 'SELL':
+                if trade_state == 'SELL' and short_position[2] == 'SELL':
                     sell_response = await sell_crypto(coinn, uno)
                     print(sell_response)
-                elif trade_state == 'BID' and short_position[2] == 'BUY':
+                elif trade_state == 'BUY' and short_position[2] == 'BUY':
                     buy_response = await buy_crypto(coinn, uno)
                     print(buy_response)
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -374,7 +373,7 @@ async def main_trade(uno):
 async def periodic_main_trade():
     while True:
         await main_trade(1)
-        await asyncio.sleep(60)
+        await asyncio.sleep(30)
 
 
 asyncio.run(periodic_main_trade())
