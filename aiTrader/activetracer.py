@@ -364,40 +364,39 @@ async def main_trade(uno):
                 loss_rate = 0  # 또는 적절한 기본값/에러 처리
             else:
                 loss_rate = (now_price - avg_price) / avg_price * 100
-            if trade_state != short_position[2]:
-                print("트렌드와 예측 신호가 다르므로 매매하지 않습니다.")
-            else:
-                if trade_state == 'SELL' and short_position[2] == 'SELL':
-                    if now_price < avg_price:
-                        if loss_rate <= STOP_LOSS_RATE:
-                            print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
-                            sell_response = await sell_crypto(coinn, uno)
-                            print(sell_response)
-                        else:
-                            print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
-                    elif now_price >= avg_price * 1.005: #익절 실행
-                        print(f"[익절] 현재가({now_price})가 매수평균가({avg_price}) 이상. 매도 실행!")
+            if trade_state == 'SELL' and short_position[2] == 'SELL':
+                if now_price < avg_price:
+                    if loss_rate <= STOP_LOSS_RATE:
+                        print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
                         sell_response = await sell_crypto(coinn, uno)
                         print(sell_response)
                     else:
-                        print("매도 대기 상태로 진행")
-                elif trade_state == 'SELL' and short_position[2] == 'BUY': #하락으로 예상
-                    if now_price < avg_price:
-                        if loss_rate <= STOP_LOSS_RATE:
-                            print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
-                            sell_response = await sell_crypto(coinn, uno)
-                            print(sell_response)
-                        else:
-                            print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
-                    elif now_price >= avg_price * 1.005:  # 익절 실행
-                        print(f"[익절] 현재가({now_price})가 매수평균가({avg_price}) 이상. 매도 실행!")
+                        print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
+                elif now_price >= avg_price * 1.005: #익절 실행
+                    print(f"[익절] 현재가({now_price})가 매수평균가({avg_price}) 이상. 매도 실행!")
+                    sell_response = await sell_crypto(coinn, uno)
+                    print(sell_response)
+                else:
+                    print("매도 대기 상태로 진행")
+            elif trade_state == 'SELL' and short_position[2] == 'BUY': #상승으로 예상
+                if now_price < avg_price:
+                    if loss_rate <= STOP_LOSS_RATE:
+                        print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
                         sell_response = await sell_crypto(coinn, uno)
                         print(sell_response)
                     else:
-                        print("양쪽 도달 하지 않아 매도 대기 상태로 진행")
-                elif trade_state == 'BUY' and short_position[2] == 'BUY':
-                    buy_response = await buy_crypto(coinn, uno)
-                    print(buy_response)
+                        print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
+                elif now_price >= avg_price * 1.005:  # 익절 실행
+                    print(f"[익절] 현재가({now_price})가 매수평균가({avg_price}) 이상. 매도 실행!")
+                    sell_response = await sell_crypto(coinn, uno)
+                    print(sell_response)
+                else:
+                    print("양쪽 도달 하지 않아 매도 대기 상태로 진행")
+            elif trade_state == 'BUY' and short_position[2] == 'BUY':
+                buy_response = await buy_crypto(coinn, uno)
+                print(buy_response)
+            elif trade_state == 'BUY' and short_position[2] == 'SELL':
+                print('더 떨어질 것으로 예측, 매수 대기함')
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     except Exception as e:
         print(e)
