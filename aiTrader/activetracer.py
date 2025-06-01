@@ -1,7 +1,6 @@
 import asyncio
 import requests
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import find_peaks
 import time
@@ -161,20 +160,20 @@ def peak_trade(
     if recent_golden_5 and recent_dead_5:
         print("최근 5개 캔들에 골든/데드가 모두 있습니다. 매매 대기!")
         trguide = "HOLD"
-        return trguide, None, None
+        return trguide, None, 'HOLD', now_price
     if recent_golden:
         print("최근 3개 캔들에 골든크로스 발생! 매수 신호! 보유하고 있지 않다면 매수")
         now_price = df['trade_price'].iloc[-1]
         volum = 500000 / now_price
         print(f"매수 실행: {now_price}에 {volum:.6f}코인")
         trguide = "BUY"
-        return trguide, None, 'BUY'
+        return trguide, None, 'BUY', now_price
     if recent_dead:
         print("최근 3개 캔들에 데드크로스 발생! 매도 신호! 보유중인 코인 판매")
         now_price = df['trade_price'].iloc[-1]
         print(f"매도 실행: {now_price}에 보유코인 전량")
         trguide = "SELL"
-        return trguide, None, 'SELL'
+        return trguide, None, 'SELL', now_price
     if last_cross_type is not None:
         up_threshold = abs(avg_up_rate) * 2.5 / 100
         down_threshold = abs(avg_down_rate) * 2.5 / 100
@@ -189,8 +188,8 @@ def peak_trade(
         print(trend[1])
     else:
         print("아직 골든/데드 크로스가 없습니다.")
-        return trguide, None, trsignal
-    return trguide, trend[1], trsignal
+        return trguide, None, trsignal, now_price
+    return trguide, trend[1], trsignal, now_price
 
 
 def analyze_cross_with_peak_and_vwma(
@@ -325,6 +324,7 @@ def predict_future_price(df, periods=3, freq='3min'):
     future_price = forecast['yhat'].iloc[-periods:].mean()
     return future_price
 
+STOP_LOSS_RATE = -1.5 #손절 설정 -1.5%
 
 async def main_trade(uno):
     try:
@@ -340,7 +340,8 @@ async def main_trade(uno):
             walltems = wallets['data']['wallet_list']  # 지갑내 코인 로드
             avgprice = wallets['data']['wallet_dict']
             remaincoin = 0
-            trade_state = 'BUY'  # 기본값: 지갑에 없다고 가정
+            trade_state = ('BUY'
+                           '')  # 기본값: 지갑에 없다고 가정
             found = False
             for witem in walltems:
                 if coinn == witem[5]:
@@ -357,12 +358,43 @@ async def main_trade(uno):
             print("3m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~3m")
             short_position = peak_trade(coinn, 1, 20, 200, '3m')
             print("short_position",short_position)
+            avg_price = float(avgprice.get(coinn, 0.0))
+            now_price = short_position[3]
+            if avg_price == 0:
+                loss_rate = 0  # 또는 적절한 기본값/에러 처리
+            else:
+                loss_rate = (now_price - avg_price) / avg_price * 100
             if trade_state != short_position[2]:
                 print("트렌드와 예측 신호가 다르므로 매매하지 않습니다.")
             else:
                 if trade_state == 'SELL' and short_position[2] == 'SELL':
-                    sell_response = await sell_crypto(coinn, uno)
-                    print(sell_response)
+                    if now_price < avg_price:
+                        if loss_rate <= STOP_LOSS_RATE:
+                            print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
+                            sell_response = await sell_crypto(coinn, uno)
+                            print(sell_response)
+                        else:
+                            print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
+                    elif now_price >= avg_price * 1.005: #익절 실행
+                        print(f"[익절] 현재가({now_price})가 매수평균가({avg_price}) 이상. 매도 실행!")
+                        sell_response = await sell_crypto(coinn, uno)
+                        print(sell_response)
+                    else:
+                        print("매도 대기 상태로 진행")
+                elif trade_state == 'SELL' and short_position[2] == 'BUY': #하락으로 예상
+                    if now_price < avg_price:
+                        if loss_rate <= STOP_LOSS_RATE:
+                            print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
+                            sell_response = await sell_crypto(coinn, uno)
+                            print(sell_response)
+                        else:
+                            print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
+                    elif now_price >= avg_price * 1.005:  # 익절 실행
+                        print(f"[익절] 현재가({now_price})가 매수평균가({avg_price}) 이상. 매도 실행!")
+                        sell_response = await sell_crypto(coinn, uno)
+                        print(sell_response)
+                    else:
+                        print("양쪽 도달 하지 않아 매도 대기 상태로 진행")
                 elif trade_state == 'BUY' and short_position[2] == 'BUY':
                     buy_response = await buy_crypto(coinn, uno)
                     print(buy_response)
@@ -372,8 +404,7 @@ async def main_trade(uno):
 
 async def periodic_main_trade():
     while True:
-        await main_trade(1)
+        await main_trade(2)
         await asyncio.sleep(30)
-
 
 asyncio.run(periodic_main_trade())
