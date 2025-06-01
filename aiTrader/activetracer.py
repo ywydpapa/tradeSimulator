@@ -411,7 +411,10 @@ async def main_trade(uno):
 
 async def periodic_main_trade():
     while True:
+        await main_trade(1)
         await main_trade(2)
+        await main_trade(3)
+        await main_trade(4)
         await asyncio.sleep(30)
 
 asyncio.run(periodic_main_trade())
