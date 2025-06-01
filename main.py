@@ -310,6 +310,47 @@ async def rest_sell_crypto(request, uno, coinn, price, volum, db: AsyncSession =
     return True
 
 
+async def rest_cut_crypto(request, uno, coinn, price, volum, db: AsyncSession = Depends(get_db)):
+    global walletkrw, walletvolum
+    try:
+        walletvolum = 0.0
+        costkrw = volum * price
+        costfee = costkrw * 0.0005
+        totalcost = costkrw - costfee
+        seckey = await get_seckey(uno, db)
+        wallets = await get_current_balance(uno, db)
+        for wallet in wallets[0]:
+            if wallet[5] == "KRW":
+                walletkrw = wallet[9]
+            elif wallet[5] == coinn:
+                walletvolum = wallet[9]
+        if walletvolum < volum:
+            return False
+        else:
+            walletkrw = walletkrw + totalcost
+            sumvolum = walletvolum - volum
+            ctype = "CUT-" + coinn
+            query = text("UPDATE trWallet set attrib = :xxxup WHERE userNo = :uno and currency = :coin")
+            await db.execute(query, {"xxxup": 'XXXUPXXXUP', "uno": uno, "coin": "KRW"})
+            await db.commit()
+            query2 = text("INSERT INTO trWallet (userNo,changeType,currency,unitPrice,inAmt, remainAmt, linkNo) "
+                          "values (:uno, :ctype ,'KRW', 1 , :costkrw, :remkrw, :seckey)")
+            await db.execute(query2,
+                             {"uno": uno, "ctype": ctype, "costkrw": totalcost, "remkrw": walletkrw, "seckey": seckey})
+            await db.commit()
+            query4 = text("UPDATE trWallet set attrib = :xxxup WHERE userNo = :uno and currency = :coin")
+            await db.execute(query4, {"xxxup": 'XXXUPXXXUP', "uno": uno, "coin": coinn})
+            await db.commit()
+            query3 = text("INSERT INTO trWallet (userNo,changeType,currency,unitPrice,outAmt, remainAmt, linkNo) "
+                          "values (:uno, :ctype ,:coinn, :uprice, :inamt, :remamt, :seckey)")
+            await db.execute(query3, {"uno": uno, "ctype": ctype, "coinn": coinn, "uprice": price, "inamt": volum,
+                                      "remamt": sumvolum, "seckey": seckey})
+            await db.commit()
+    except Exception as e:
+        print("Error!!", e)
+    return True
+
+
 async def rest_buy_crypto(request, uno, coinn, price, volum, db: AsyncSession = Depends(get_db)):
     global walletkrw, walletvolum
     try:
@@ -671,6 +712,23 @@ async def resttradesellmarket(request:Request, uno: int, coinn: str, db: AsyncSe
                 price = cprice[0]['trade_price']
                 volum = float(amt)
                 await rest_sell_crypto(request, uno, coinn, price, volum, db)
+                return JSONResponse({"success": True})
+    except Exception as e:
+        print("Sell Error!!", e)
+        return JSONResponse({"success": False})
+
+@app.get("/restsellcut/{uno}/{coinn}")
+async def resttradesellcut(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
+    try:
+        mycoins = await get_current_balance(uno,db)
+        coin_list, coin_dict = mycoins
+        for mycoin in coin_list:
+            if mycoin[5] == coinn:
+                amt = mycoin[9]
+                cprice = await get_current_price(coinn)
+                price = cprice[0]['trade_price']
+                volum = float(amt)
+                await rest_cut_crypto(request, uno, coinn, price, volum, db)
                 return JSONResponse({"success": True})
     except Exception as e:
         print("Sell Error!!", e)
