@@ -313,6 +313,12 @@ async def sell_crypto(ticker,uno):
     return response
 
 
+async def cut_crypto(ticker,uno):
+    url = f'http://ywydpapa.iptime.org:8000/restsellcut/{uno}/{ticker}'
+    response = requests.get(url)
+    return response
+
+
 def predict_future_price(df, periods=3, freq='3min'):
     prophet_df = df.reset_index()[['candle_date_time_kst', 'trade_price']].rename(
         columns={'candle_date_time_kst': 'ds', 'trade_price': 'y'}
@@ -370,8 +376,8 @@ async def main_trade(uno):
                 if now_price < avg_price:
                     if loss_rate <= STOP_LOSS_RATE:
                         print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
-                        sell_response = await sell_crypto(coinn, uno)
-                        print(sell_response)
+                        cut_response = await cut_crypto(coinn, uno)
+                        print(cut_response)
                     else:
                         print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
                 elif now_price >= avg_price * 1.005: #익절 실행
@@ -384,8 +390,8 @@ async def main_trade(uno):
                 if now_price < avg_price:
                     if loss_rate < STOP_LOSS_RATE:
                         print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
-                        sell_response = await sell_crypto(coinn, uno)
-                        print(sell_response)
+                        cut_response = await cut_crypto(coinn, uno)
+                        print(cut_response)
                     else:
                         print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
                 elif now_price > avg_price * 1.005:  # 익절 실행
