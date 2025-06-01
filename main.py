@@ -435,6 +435,19 @@ async def get_avg_by_coin(uno, setkey, db: AsyncSession = Depends(get_db)):
         return {}
 
 
+async def rest_get_avg_by_coin(uno, db: AsyncSession = Depends(get_db)):
+    try:
+        setkey = await get_seckey(uno, db=db)
+        query = text(
+            "SELECT currency,IFNULL(누적매수금액 / NULLIF(누적매수수량,0), 0) AS avg_price FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY currency ORDER BY regDate DESC, linkNo DESC) AS rn,SUM(CASE WHEN changeType LIKE 'BUY%' THEN unitPrice * inAmt ELSE 0 END) OVER (PARTITION BY currency, session_id ORDER BY regDate, linkNo ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS 누적매수금액, SUM(CASE WHEN changeType LIKE 'BUY%' THEN inAmt ELSE 0 END)                OVER (PARTITION BY currency, session_id ORDER BY regDate, linkNo ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS 누적매수수량    FROM (        SELECT *,               SUM(is_zero) OVER (PARTITION BY currency ORDER BY regDate, linkNo ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS session_id FROM ( SELECT *, CASE WHEN remainAmt = 0 THEN 1 ELSE 0 END AS is_zero FROM trWallet WHERE userNo = :uno and linkNo = :linkno ORDER BY regDate, linkNo ) t1 ) t2) t3 WHERE rn = 1")
+        result = await db.execute(query, {"uno": uno, "linkno": setkey})
+        rows = result.fetchall()
+        return {row.currency: round(float(row.avg_price), 2) for row in rows}
+    except Exception as e:
+        print(e)
+        return {}
+
+
 def require_login(request: Request):
     user_no = request.session.get("user_No")
     if not user_no:

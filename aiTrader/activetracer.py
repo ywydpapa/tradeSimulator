@@ -338,13 +338,15 @@ async def main_trade(uno):
             print("로드된 설정 코인 :", coinn)
             wallets = await get_wallet(uno)
             walltems = wallets['data']['wallet_list']  # 지갑내 코인 로드
-            avgprice = wallets['data']['wallet_dict']
+            curprice = wallets['data']['wallet_dict']
             remaincoin = 0
+            avgprice = 0
             trade_state = ('BUY'
                            '')  # 기본값: 지갑에 없다고 가정
             found = False
             for witem in walltems:
                 if coinn == witem[5]:
+                    avgprice = witem[6]
                     remaincoin = witem[9]
                     found = True
                     if remaincoin > 0:
@@ -353,12 +355,12 @@ async def main_trade(uno):
                         trade_state = 'BUY'
                     break
             print("지갑내 코인 : ", remaincoin)
-            print("매수 평균가 :", float(avgprice.get(coinn, 0.0)))
+            print("매수 평균가 :", float(avgprice))
             print("매매 전략 :", trade_state)
             print("3m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~3m")
             short_position = peak_trade(coinn, 1, 20, 200, '3m')
             print("short_position",short_position)
-            avg_price = float(avgprice.get(coinn, 0.0))
+            avg_price = float(avgprice)
             now_price = short_position[3]
             if avg_price == 0:
                 loss_rate = 0  # 또는 적절한 기본값/에러 처리
@@ -380,13 +382,13 @@ async def main_trade(uno):
                     print("매도 대기 상태로 진행")
             elif trade_state == 'SELL' and short_position[2] == 'BUY': #상승으로 예상
                 if now_price < avg_price:
-                    if loss_rate <= STOP_LOSS_RATE:
+                    if loss_rate < STOP_LOSS_RATE:
                         print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
                         sell_response = await sell_crypto(coinn, uno)
                         print(sell_response)
                     else:
                         print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
-                elif now_price >= avg_price * 1.005:  # 익절 실행
+                elif now_price > avg_price * 1.005:  # 익절 실행
                     print(f"[익절] 현재가({now_price})가 매수평균가({avg_price}) 이상. 매도 실행!")
                     sell_response = await sell_crypto(coinn, uno)
                     print(sell_response)
