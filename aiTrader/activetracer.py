@@ -307,6 +307,12 @@ async def buy_crypto(ticker,uno):
     return response
 
 
+async def add_crypto(ticker,uno):
+    url = f'http://ywydpapa.iptime.org:8000/restbuymarketadd/{uno}/{ticker}'
+    response = requests.get(url)
+    return response
+
+
 async def sell_crypto(ticker,uno):
     url = f'http://ywydpapa.iptime.org:8000/restsellmarket/{uno}/{ticker}'
     response = requests.get(url)
@@ -389,15 +395,15 @@ async def main_trade(uno):
             elif trade_state == 'SELL' and short_position[2] == 'BUY': #상승으로 예상
                 if now_price < avg_price:
                     if loss_rate < STOP_LOSS_RATE:
-                        print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
-                        cut_response = await cut_crypto(coinn, uno)
-                        print(cut_response)
+                        print(f"[추가매수] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 상승 예상 추가매수 실행!")
+                        add_response = await add_crypto(coinn, uno)
+                        print(add_response)
                     else:
                         print(f"[대기] 현재가({now_price})가 매수평균가({avg_price}) 미만이지만, 손절 기준 미충족. 매도 대기.")
                 elif now_price > avg_price * 1.005:  # 익절 실행
-                    print(f"[익절] 현재가({now_price})가 매수평균가({avg_price}) 이상. 매도 실행!")
-                    sell_response = await sell_crypto(coinn, uno)
-                    print(sell_response)
+                    print(f"[추가매수] 현재가({now_price})가 매수평균가({avg_price}) 이상. 상승예상 추가 매수 실행!")
+                    add_response = await add_crypto(coinn, uno)
+                    print(add_response)
                 else:
                     print("양쪽 도달 하지 않아 매도 대기 상태로 진행")
             elif trade_state == 'BUY' and short_position[2] == 'BUY':
@@ -411,8 +417,7 @@ async def main_trade(uno):
 
 async def periodic_main_trade():
     while True:
-        await main_trade(1)
-        await main_trade(4)
+        await main_trade(2)
         await asyncio.sleep(30)
 
 asyncio.run(periodic_main_trade())
