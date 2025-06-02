@@ -700,28 +700,6 @@ async def resttradebuymarket(request:Request, uno: int, coinn: str, db: AsyncSes
         print("Buy Error!!", e)
         return JSONResponse({"success": False})
 
-@app.get("/restbuymarketamt/{uno}/{coinn}/")
-async def resttradebuymarket(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
-    try:
-        mysets = await get_trsetups(uno,db)
-        if mysets:
-            for myset in mysets:
-                if myset["coinName"] == coinn and myset["useYN"] == "Y":
-                    amt = myset["stepAmt"]/5 #20% 추가 구매
-                    cprice = await get_current_price(coinn)
-                    price = cprice[0]['trade_price']
-                    volum = float(amt) / float(price)
-                    await rest_buy_crypto(request, uno, coinn, price, volum, db)
-                    return JSONResponse({"success": True})
-                else:
-                    print("설정 없음")
-        else:
-            print("설정 없음")
-    except Exception as e:
-        print("Buy Error!!", e)
-        return JSONResponse({"success": False})
-
-
 @app.get("/restsellmarket/{uno}/{coinn}")
 async def resttradesellmarket(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
     try:
