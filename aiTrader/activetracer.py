@@ -319,7 +319,7 @@ async def cut_crypto(ticker,uno):
     return response
 
 
-def predict_future_price(df, periods=3, freq='3min'):
+def predict_future_price(df, periods=3, freq='5min'):
     prophet_df = df.reset_index()[['candle_date_time_kst', 'trade_price']].rename(
         columns={'candle_date_time_kst': 'ds', 'trade_price': 'y'}
     )
@@ -330,7 +330,7 @@ def predict_future_price(df, periods=3, freq='3min'):
     future_price = forecast['yhat'].iloc[-periods:].mean()
     return future_price
 
-STOP_LOSS_RATE = -1.5 #손절 설정 -1.5%
+STOP_LOSS_RATE = -2.5 #손절 설정 -2.5%
 
 async def main_trade(uno):
     try:
@@ -363,8 +363,8 @@ async def main_trade(uno):
             print("지갑내 코인 : ", remaincoin)
             print("매수 평균가 :", float(avgprice))
             print("매매 전략 :", trade_state)
-            print("3m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~3m")
-            short_position = peak_trade(coinn, 1, 20, 200, '3m')
+            print("5m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~5m")
+            short_position = peak_trade(coinn, 1, 20, 200, '5m')
             print("short_position",short_position)
             avg_price = float(avgprice)
             now_price = short_position[3]
@@ -372,7 +372,7 @@ async def main_trade(uno):
                 loss_rate = 0  # 또는 적절한 기본값/에러 처리
             else:
                 loss_rate = (now_price - avg_price) / avg_price * 100
-            if trade_state == 'SELL' and short_position[2] == 'SELL':
+            if trade_state == 'SELL' and short_position[2] == 'SELL': #하락할 것으로 예상
                 if now_price < avg_price:
                     if loss_rate <= STOP_LOSS_RATE:
                         print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
@@ -388,7 +388,7 @@ async def main_trade(uno):
                     print("매도 대기 상태로 진행")
             elif trade_state == 'SELL' and short_position[2] == 'BUY': #상승으로 예상
                 if now_price < avg_price:
-                    if loss_rate < STOP_LOSS_RATE:
+                    if loss_rate <= STOP_LOSS_RATE:
                         print(f"[손절] 현재가({now_price})가 매수평균가({avg_price})보다 {loss_rate:.2f}% 낮음. 손절 실행!")
                         cut_response = await cut_crypto(coinn, uno)
                         print(cut_response)
@@ -411,8 +411,7 @@ async def main_trade(uno):
 
 async def periodic_main_trade():
     while True:
-        await main_trade(1)
-        await main_trade(4)
-        await asyncio.sleep(30)
+        await main_trade(2)
+        await asyncio.sleep(15)
 
 asyncio.run(periodic_main_trade())
