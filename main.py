@@ -979,8 +979,8 @@ async def hotcoinlist(request: Request, uno: int, user_session: int = Depends(re
     try:
         orderbooks = await get_hotcoins(request, db)
         gettime = orderbooks[0][8]
-        now = datetime.now()
-        diff = now - gettime
+        nowtt = datetime.now()
+        diff = nowtt - gettime
         days = diff.days
         hours = diff.seconds // 3600
         minutes = (diff.seconds % 3600) // 60
