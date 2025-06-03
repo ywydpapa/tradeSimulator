@@ -25,7 +25,6 @@ import httpx
 import websockets
 import json
 
-
 dotenv.load_dotenv()
 DATABASE_URL = os.getenv("dburl")
 engine = create_async_engine(DATABASE_URL, echo=True)
@@ -137,7 +136,6 @@ async def update_tradetrend():
                     except Exception as e:
                         print(f"코인트렌드 처리 중 오류 발생 {coin[0]}: {str(e)}")
                         continue
-
                 tradetrend = result
                 print(f"[{now}] tradetrend updated")
             except Exception as e:
@@ -215,7 +213,7 @@ async def buy_crypto(request, uno, coinn, price, volum, db: AsyncSession = Depen
     return True
 
 
-async def get_seckey(uno:int, db: AsyncSession = Depends(get_db)):
+async def get_seckey(uno: int, db: AsyncSession = Depends(get_db)):
     try:
         query = text("select setupKey from trUser where userNo = :uno")
         result = await db.execute(query, {"uno": uno})
@@ -395,7 +393,7 @@ async def rest_buy_crypto(request, uno, coinn, price, volum, db: AsyncSession = 
 async def rest_add_trade_amt(bidamt, askamt, db):
     try:
         query = text("INSERT INTO tradeAmt (bidAmt, askAmt) VALUES (:bidamt, :askamt)")
-        await db.execute(query,{"bidamt": bidamt, "askamt": askamt})
+        await db.execute(query, {"bidamt": bidamt, "askamt": askamt})
         await db.commit()
         return True
     except Exception as e:
@@ -403,12 +401,26 @@ async def rest_add_trade_amt(bidamt, askamt, db):
         return False
 
 
-async def rest_add_orderbook_amt(datetag,idxrow,coinn,bidamt, askamt,totalamt,amtdiff, db):
+async def rest_add_orderbook_amt(datetag, idxrow, coinn, bidamt, askamt, totalamt, amtdiff, db):
     try:
-        query = text("INSERT INTO orderbookAmt (dateTag, idxRow, coinName, bidAmt, askAmt, totalAmt, amtDiff) values (:dateTag, :idxRow, :coinName, :bidAmt, :askAmt, :totalAmt, :amtDiff)")
-        await db.execute(query,{"dateTag": datetag, "idxRow": idxrow, "coinName": coinn, "bidAmt": bidamt, "askAmt": askamt, "totalAmt": totalamt, "amtDiff": amtdiff})
+        query = text(
+            "INSERT INTO orderbookAmt (dateTag, idxRow, coinName, bidAmt, askAmt, totalAmt, amtDiff) values (:dateTag, :idxRow, :coinName, :bidAmt, :askAmt, :totalAmt, :amtDiff)")
+        await db.execute(query,
+                         {"dateTag": datetag, "idxRow": idxrow, "coinName": coinn, "bidAmt": bidamt, "askAmt": askamt,
+                          "totalAmt": totalamt, "amtDiff": amtdiff})
         await db.commit()
         return True
+    except Exception as e:
+        print("Error!!", e)
+        return False
+
+
+async def get_hotcoins(request, db):
+    try:
+        query = text("SELECT * FROM orderbookAmt where dateTag = (select max(dateTag) from orderbookAmt)")
+        result = await db.execute(query)
+        orderbooks = result.fetchall()
+        return orderbooks
     except Exception as e:
         print("Error!!", e)
         return False
@@ -498,6 +510,65 @@ async def get_avg_by_coin(uno, setkey, db: AsyncSession = Depends(get_db)):
         return {}
 
 
+def add_amt(bidamt, askamt):
+    url = f'http://ywydpapa.iptime.org:8000/restaddtradeamt/{bidamt}/{askamt}'
+    response = requests.get(url)
+    return response
+
+
+def add_orderbook(datetag, idxrow, coinn, bidamt, askamt, totalamt, amtdiff):
+    url = f'http://ywydpapa.iptime.org:8000/restaddorderbookamt/{datetag}/{idxrow}/{coinn}/{bidamt}/{askamt}/{totalamt}/{amtdiff}'
+    response = requests.get(url)
+    return response
+
+
+async def get_new_orderbook_and_save():
+    try:
+        markets_url = "https://api.upbit.com/v1/market/all"
+        markets = requests.get(markets_url).json()
+        krw_markets = [m['market'] for m in markets if m['market'].startswith('KRW-')]
+        results = []
+        for market in krw_markets:
+            try:
+                orderbook_url = f"https://api.upbit.com/v1/orderbook?markets={market}"
+                res = requests.get(orderbook_url).json()
+                units = res[0]['orderbook_units']
+                total_bid_amount = sum(u['bid_price'] * u['bid_size'] for u in units)
+                total_ask_amount = sum(u['ask_price'] * u['ask_size'] for u in units)
+                total_amount = total_bid_amount + total_ask_amount
+                total_diff = total_bid_amount / total_ask_amount * 100
+                results.append({
+                    'market': market,
+                    'total_bid_amount': total_bid_amount,
+                    'total_ask_amount': total_ask_amount,
+                    'total_amount': total_amount,
+                    'total_diff': total_diff
+                })
+                time.sleep(0.1)  # API rate limit 대응
+            except Exception as e:
+                print(f"Error for {market}: {e}")
+
+        sorted_results = sorted(results, key=lambda x: x['total_amount'], reverse=True)
+
+        total_bid_all = sum(r['total_bid_amount'] for r in results)
+        total_ask_all = sum(r['total_ask_amount'] for r in results)
+        add_amt(int(total_bid_all), int(total_ask_all))
+        now = datetime.now()
+        datetag = now.strftime("%Y%m%d%H%M%S")
+        idxr = 0
+        for r in sorted_results[:25]:
+            idxr += 1
+            add_orderbook(datetag, idxr, r['market'], int(r['total_bid_amount']), int(r['total_ask_amount']),
+                          int(r['total_amount']), r['total_diff'])
+        return True
+    except Exception as e:
+        print(e)
+        return False
+    finally:
+        skptime = 60*60*6
+        time.sleep(skptime)
+
+
 async def rest_get_avg_by_coin(uno, db: AsyncSession = Depends(get_db)):
     try:
         setkey = await get_seckey(uno, db=db)
@@ -529,7 +600,7 @@ async def private_page(request: Request, user_session: int = Depends(require_log
 
 @app.on_event("startup")
 async def startup_event():
-    # asyncio.create_task(periodic_main_trade())
+    # asyncio.create_task(get_new_orderbook_and_save())
     return True
 
 
@@ -703,7 +774,7 @@ async def tradebuymarket(
 
 
 @app.get("/restaddtradeamt/{bidamt}/{askamt}")
-async def restaddtradeamt(request:Request, bidamt: int, askamt: int,db: AsyncSession = Depends(get_db)):
+async def restaddtradeamt(request: Request, bidamt: int, askamt: int, db: AsyncSession = Depends(get_db)):
     try:
         act = await rest_add_trade_amt(bidamt, askamt, db)
         return JSONResponse({"success": True})
@@ -713,9 +784,10 @@ async def restaddtradeamt(request:Request, bidamt: int, askamt: int,db: AsyncSes
 
 
 @app.get("/restaddorderbookamt/{datetag}/{idxrow}/{coinn}/{bidamt}/{askamt}/{totalamt}/{amtdiff}")
-async def restaddorderbookamt(request:Request,datetag:str,idxrow:int, coinn:str,bidamt: int, askamt: int, totalamt:int, amtdiff:float ,db: AsyncSession = Depends(get_db)):
+async def restaddorderbookamt(request: Request, datetag: str, idxrow: int, coinn: str, bidamt: int, askamt: int,
+                              totalamt: int, amtdiff: float, db: AsyncSession = Depends(get_db)):
     try:
-        act = await rest_add_orderbook_amt(datetag,idxrow,coinn,bidamt,askamt,totalamt, amtdiff, db)
+        act = await rest_add_orderbook_amt(datetag, idxrow, coinn, bidamt, askamt, totalamt, amtdiff, db)
         print(act)
         return JSONResponse({"success": True})
     except Exception as e:
@@ -724,9 +796,9 @@ async def restaddorderbookamt(request:Request,datetag:str,idxrow:int, coinn:str,
 
 
 @app.get("/restbuymarket/{uno}/{coinn}")
-async def resttradebuymarket(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
+async def resttradebuymarket(request: Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
     try:
-        mysets = await get_trsetups(uno,db)
+        mysets = await get_trsetups(uno, db)
         if mysets:
             for myset in mysets:
                 if myset["coinName"] == coinn and myset["useYN"] == "Y":
@@ -744,14 +816,15 @@ async def resttradebuymarket(request:Request, uno: int, coinn: str, db: AsyncSes
         print("Buy Error!!", e)
         return JSONResponse({"success": False})
 
+
 @app.get("/restbuymarketadd/{uno}/{coinn}")
-async def resttradebuymarketadd(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
+async def resttradebuymarketadd(request: Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
     try:
-        mysets = await get_trsetups(uno,db)
+        mysets = await get_trsetups(uno, db)
         if mysets:
             for myset in mysets:
                 if myset["coinName"] == coinn and myset["useYN"] == "Y":
-                    amt = myset["stepAmt"]/5
+                    amt = myset["stepAmt"] / 5
                     cprice = await get_current_price(coinn)
                     price = cprice[0]['trade_price']
                     volum = float(amt) / float(price)
@@ -765,10 +838,11 @@ async def resttradebuymarketadd(request:Request, uno: int, coinn: str, db: Async
         print("Buy Error!!", e)
         return JSONResponse({"success": False})
 
+
 @app.get("/restsellmarket/{uno}/{coinn}")
-async def resttradesellmarket(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
+async def resttradesellmarket(request: Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
     try:
-        mycoins = await get_current_balance(uno,db)
+        mycoins = await get_current_balance(uno, db)
         coin_list, coin_dict = mycoins
         for mycoin in coin_list:
             if mycoin[5] == coinn:
@@ -782,10 +856,11 @@ async def resttradesellmarket(request:Request, uno: int, coinn: str, db: AsyncSe
         print("Sell Error!!", e)
         return JSONResponse({"success": False})
 
+
 @app.get("/restsellcut/{uno}/{coinn}")
-async def resttradesellcut(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
+async def resttradesellcut(request: Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
     try:
-        mycoins = await get_current_balance(uno,db)
+        mycoins = await get_current_balance(uno, db)
         coin_list, coin_dict = mycoins
         for mycoin in coin_list:
             if mycoin[5] == coinn:
@@ -799,6 +874,7 @@ async def resttradesellcut(request:Request, uno: int, coinn: str, db: AsyncSessi
         print("Sell Error!!", e)
         return JSONResponse({"success": False})
 
+
 def tuple_to_list_with_datetime(t):
     result = []
     for item in t:
@@ -807,6 +883,7 @@ def tuple_to_list_with_datetime(t):
         else:
             result.append(item)
     return result
+
 
 @app.get("/restwallet/{uno}")
 async def restwallet(request: Request, uno: int, db: AsyncSession = Depends(get_db)):
@@ -828,10 +905,11 @@ async def restwallet(request: Request, uno: int, db: AsyncSession = Depends(get_
         print("Get Balance Error!!", e)
         return JSONResponse({"success": False})
 
+
 @app.get("/restsetup/{uno}")
 async def restsetup(request: Request, uno: int, db: AsyncSession = Depends(get_db)):
     try:
-        mysets = await get_trsetups(uno,db)
+        mysets = await get_trsetups(uno, db)
         if mysets:
             return JSONResponse({"success": True, "data": mysets})
         else:
@@ -890,6 +968,31 @@ async def gettradelog(request: Request, uno: int, coinn: str, user_session: int 
         print("Get Log Error !!", e)
 
 
+@app.get("/hotcoin_list/{uno}")
+async def hotcoinlist(request: Request, uno: int, user_session: int = Depends(require_login),
+                      db: AsyncSession = Depends(get_db)):
+    orderbooks = None
+    if uno != user_session:
+        return RedirectResponse(url="/", status_code=303)
+    usern = request.session.get("user_Name")
+    setkey = request.session.get("setupKey")
+    try:
+        orderbooks = await get_hotcoins(request, db)
+        gettime = orderbooks[0][8]
+        now = datetime.now()
+        diff = now - gettime
+        days = diff.days
+        hours = diff.seconds // 3600
+        minutes = (diff.seconds % 3600) // 60
+        seconds = diff.seconds % 60
+        time_diff = f"{days}일 {hours}시간 {minutes}분 {seconds}초 "
+        return templates.TemplateResponse("/trade/hotcoinlist.html",
+                                          {"request": request, "userNo": uno, "userName": usern, "setkey": setkey,
+                                           "orderbooks": orderbooks, "time_diff": time_diff})
+    except Exception as e:
+        print("Get Hotcoins Error !!", e)
+
+
 @app.get("/tradestatus/{uno}")
 async def tradestatus(request: Request, uno: int, user_session: int = Depends(require_login),
                       db: AsyncSession = Depends(get_db)):
@@ -920,7 +1023,6 @@ async def get_tradesignal(request: Request):
     uno = request.session.get("user_No")
     return templates.TemplateResponse("trade/tradetrend.html",
                                       {"request": request, "userNo": uno, "user_Name": usern, })
-
 
 
 @app.get("/tsignal/{coinn}", response_class=HTMLResponse)
@@ -971,6 +1073,7 @@ async def coin_price_ws(websocket: WebSocket, coinn: str, db: AsyncSession = Dep
         print(f"WebSocket disconnected: coin {coinn}")
     except Exception as e:
         print("WebSocket Error:", e)
+
 
 async def upbit_ws_price_stream(market: str):
     uri = "wss://api.upbit.com/websocket/v1"
@@ -1027,6 +1130,7 @@ async def get_tradesetup(request: Request, uno: int, user_session: int = Depends
                 "setups": []
             })
 
+
 @app.post("/setuponoff/{setupno}/{onoff}/{uno}")
 async def update_setuponoff(uno: int, setupno: int, onoff: str, user_session: int = Depends(require_login),
                             db: AsyncSession = Depends(get_db)):
@@ -1037,9 +1141,10 @@ async def update_setuponoff(uno: int, setupno: int, onoff: str, user_session: in
     await db.commit()
     return RedirectResponse(url=f"/tradesetup/{uno}", status_code=303)
 
+
 @app.post("/setupdel/{setupno}/{uno}")
 async def update_setupdel(uno: int, setupno: int, user_session: int = Depends(require_login),
-                            db: AsyncSession = Depends(get_db)):
+                          db: AsyncSession = Depends(get_db)):
     if uno != user_session:
         return RedirectResponse(url="/", status_code=303)
     query = text(f"UPDATE polarisSets set attrib = :attx WHERE setupNo = {setupno}")
@@ -1047,26 +1152,22 @@ async def update_setupdel(uno: int, setupno: int, user_session: int = Depends(re
     await db.commit()
     return RedirectResponse(url=f"/tradesetup/{uno}", status_code=303)
 
+
 @app.post("/insertsetup/{uno}/{coinn}/{setamont}")
 async def insert_setup(uno: int, coinn: str, setamont: float, user_session: int = Depends(require_login),
-                            db: AsyncSession = Depends(get_db)):
+                       db: AsyncSession = Depends(get_db)):
     if uno != user_session:
         return RedirectResponse(url="/", status_code=303)
     query = text(f"INSERT INTO polarisSets (userNo,coinName,stepAmt,maxAmt) "
-                  "values (:uno, :coinn ,:setamt, :maxamt)")
+                 "values (:uno, :coinn ,:setamt, :maxamt)")
     await db.execute(query, {"uno": uno, "coinn": coinn, "setamt": setamont, "maxamt": setamont})
     await db.commit()
     return RedirectResponse(url=f"/tradesetup/{uno}", status_code=303)
 
+
 UPBIT_CANDLE_URL = "https://api.upbit.com/v1/candles/seconds"
 MARKET = "KRW-WCT"
 
-async def fetch_latest_candle():
-    async with httpx.AsyncClient() as client:
-        params = {"market": MARKET, "count": 1}
-        response = await client.get(UPBIT_CANDLE_URL, params=params)
-        response.raise_for_status()
-        return response.json()[0]
 
 async def fetch_latest_candle():
     async with httpx.AsyncClient() as client:
@@ -1074,10 +1175,20 @@ async def fetch_latest_candle():
         response = await client.get(UPBIT_CANDLE_URL, params=params)
         response.raise_for_status()
         return response.json()[0]
+
+
+async def fetch_latest_candle():
+    async with httpx.AsyncClient() as client:
+        params = {"market": MARKET, "count": 1}
+        response = await client.get(UPBIT_CANDLE_URL, params=params)
+        response.raise_for_status()
+        return response.json()[0]
+
 
 @app.get("/ws-chart", response_class=HTMLResponse)
 async def get_chart(request: Request):
     return templates.TemplateResponse("chart.html", {"request": request})
+
 
 @app.websocket("/ws/upbit-candle")
 async def websocket_endpoint(websocket: WebSocket):
@@ -1099,4 +1210,3 @@ async def websocket_endpoint(websocket: WebSocket):
         print("WebSocket 종료:", e)
     finally:
         await websocket.close()
-
