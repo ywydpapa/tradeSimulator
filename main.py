@@ -564,9 +564,6 @@ async def get_new_orderbook_and_save():
     except Exception as e:
         print(e)
         return False
-    finally:
-        skptime = 60*60*6
-        time.sleep(skptime)
 
 
 async def rest_get_avg_by_coin(uno, db: AsyncSession = Depends(get_db)):
