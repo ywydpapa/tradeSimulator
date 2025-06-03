@@ -1,0 +1,50 @@
+import requests
+import time
+
+# 1. 전체 마켓 코드 가져오기 (KRW마켓만 예시)
+markets_url = "https://api.upbit.com/v1/market/all"
+markets = requests.get(markets_url).json()
+krw_markets = [m['market'] for m in markets if m['market'].startswith('KRW-')]
+
+results = []
+
+# 2. 각 마켓별 오더북에서 거래금액 집계
+for market in krw_markets:
+    try:
+        orderbook_url = f"https://api.upbit.com/v1/orderbook?markets={market}"
+        res = requests.get(orderbook_url).json()
+        units = res[0]['orderbook_units']
+        total_bid_amount = sum(u['bid_price'] * u['bid_size'] for u in units)
+        total_ask_amount = sum(u['ask_price'] * u['ask_size'] for u in units)
+        total_amount = total_bid_amount - total_ask_amount
+        results.append({
+            'market': market,
+            'total_bid_amount': total_bid_amount,
+            'total_ask_amount': total_ask_amount,
+            'total_amount': total_amount
+        })
+        time.sleep(0.1)  # API rate limit 대응
+    except Exception as e:
+        print(f"Error for {market}: {e}")
+
+# 3. 총 거래금액(매수+매도) 기준 정렬
+sorted_results = sorted(results, key=lambda x: x['total_amount'], reverse=True)
+
+# === 전체 오더북 매수·매도금액 합계 구하는 부분 추가 ===
+total_bid_all = sum(r['total_bid_amount'] for r in results)
+total_ask_all = sum(r['total_ask_amount'] for r in results)
+
+print(f"\n전체 KRW마켓 오더북 매수금액 합계: {total_bid_all:,.0f}원")
+print(f"전체 KRW마켓 오더북 매도금액 합계: {total_ask_all:,.0f}원\n")
+
+def format_korean_currency(amount):
+    if amount >= 100_000_000:
+        return f"{amount // 100_000_000}억 {((amount % 100_000_000) // 10_000)}만"
+    elif amount >= 10_000:
+        return f"{amount // 10_000}만"
+    else:
+        return f"{amount}원"
+
+# 4. 결과 출력 (상위 10개)
+for r in sorted_results[:15]:
+    print(f"{r['market']}: 매수금액 {r['total_bid_amount']:,.0f}원, 매도금액 {r['total_ask_amount']:,.0f}원, 차액 {r['total_amount']:,.0f}원")

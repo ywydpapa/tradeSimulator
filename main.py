@@ -392,6 +392,17 @@ async def rest_buy_crypto(request, uno, coinn, price, volum, db: AsyncSession = 
     return True
 
 
+async def rest_add_trade_amt(bidamt, askamt, db):
+    try:
+        query = text("INSERT INTO tradeAmt (bidAmt, askAmt) VALUES (:bidamt, :askamt)")
+        await db.execute(query,{"bidamt": bidamt, "askamt": askamt})
+        await db.commit()
+        return True
+    except Exception as e:
+        print("Error!!", e)
+        return False
+
+
 async def get_current_balance(uno, db: AsyncSession = Depends(get_db)):
     try:
         query = text("SELECT * FROM trWallet where userNo = :uno and attrib not like :attxx order by currency ")
@@ -678,6 +689,19 @@ async def tradebuymarket(
     except Exception as e:
         print("Error!!", e)
         return JSONResponse({"success": False, "message": "서버 오류", "redirect": "/tradecenter"})
+
+
+
+
+@app.get("/restaddtradeamt/{bidamt}/{askamt}")
+async def restaddtradeamt(request:Request, bidamt: int, askamt: int,db: AsyncSession = Depends(get_db)):
+    try:
+        act = await rest_add_trade_amt(bidamt, askamt, db)
+        return JSONResponse({"success": True})
+    except Exception as e:
+        print("Error!!", e)
+        return JSONResponse({"success": False})
+
 
 @app.get("/restbuymarket/{uno}/{coinn}")
 async def resttradebuymarket(request:Request, uno: int, coinn: str, db: AsyncSession = Depends(get_db)):
