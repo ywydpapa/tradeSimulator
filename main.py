@@ -403,6 +403,17 @@ async def rest_add_trade_amt(bidamt, askamt, db):
         return False
 
 
+async def rest_add_orderbook_amt(datetag,idxrow,coinn,bidamt, askamt,totalamt,amtdiff, db):
+    try:
+        query = text("INSERT INTO orderbookAmt (dateTag, idxRow, coinName, bidAmt, askAmt, totalAmt, amtDiff) values (:dateTag, :idxRow, :coinName, :bidAmt, :askAmt, :totalAmt, :amtDiff)")
+        await db.execute(query,{"dateTag": datetag, "idxRow": idxrow, "coinName": coinn, "bidAmt": bidamt, "askAmt": askamt, "totalAmt": totalamt, "amtDiff": amtdiff})
+        await db.commit()
+        return True
+    except Exception as e:
+        print("Error!!", e)
+        return False
+
+
 async def get_current_balance(uno, db: AsyncSession = Depends(get_db)):
     try:
         query = text("SELECT * FROM trWallet where userNo = :uno and attrib not like :attxx order by currency ")
@@ -691,12 +702,21 @@ async def tradebuymarket(
         return JSONResponse({"success": False, "message": "서버 오류", "redirect": "/tradecenter"})
 
 
-
-
 @app.get("/restaddtradeamt/{bidamt}/{askamt}")
 async def restaddtradeamt(request:Request, bidamt: int, askamt: int,db: AsyncSession = Depends(get_db)):
     try:
         act = await rest_add_trade_amt(bidamt, askamt, db)
+        return JSONResponse({"success": True})
+    except Exception as e:
+        print("Error!!", e)
+        return JSONResponse({"success": False})
+
+
+@app.get("/restaddorderbookamt/{datetag}/{idxrow}/{coinn}/{bidamt}/{askamt}/{totalamt}/{amtdiff}")
+async def restaddorderbookamt(request:Request,datetag:str,idxrow:int, coinn:str,bidamt: int, askamt: int, totalamt:int, amtdiff:float ,db: AsyncSession = Depends(get_db)):
+    try:
+        act = await rest_add_orderbook_amt(datetag,idxrow,coinn,bidamt,askamt,totalamt, amtdiff, db)
+        print(act)
         return JSONResponse({"success": True})
     except Exception as e:
         print("Error!!", e)
