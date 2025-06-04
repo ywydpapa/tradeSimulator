@@ -983,12 +983,24 @@ async def hotcoinlist(request: Request, uno: int, user_session: int = Depends(re
         minutes = (diff.seconds % 3600) // 60
         seconds = diff.seconds % 60
         time_diff = f"{days}일 {hours}시간 {minutes}분 {seconds}초 "
-        trsetups = await get_trsetups(uno,db)
-        return templates.TemplateResponse("/trade/hotcoinlist.html",
-                                          {"request": request, "userNo": uno, "userName": usern, "setkey": setkey,
-                                           "orderbooks": orderbooks, "time_diff": time_diff, "trsetups": trsetups })
+        is_reloadable = "Y" if diff.total_seconds() > 10800 else "N" # 3시간
+        trsetups = await get_trsetups(uno, db)
+        return templates.TemplateResponse(
+            "/trade/hotcoinlist.html",
+            {
+                "request": request,
+                "userNo": uno,
+                "userName": usern,
+                "setkey": setkey,
+                "orderbooks": orderbooks,
+                "time_diff": time_diff,
+                "trsetups": trsetups,
+                "reloadable": is_reloadable,
+            }
+        )
     except Exception as e:
         print("Get Hotcoins Error !!", e)
+
 
 
 @app.get("/tradestatus/{uno}")
@@ -1208,3 +1220,15 @@ async def websocket_endpoint(websocket: WebSocket):
         print("WebSocket 종료:", e)
     finally:
         await websocket.close()
+
+
+@app.get("/hotcoin_reload/{uno}")
+async def hotcoin_reload(uno: int, request: Request):
+    # (로그인 체크 등 필요하다면 추가)
+    result = await get_new_orderbook_and_save()
+    if result:
+        # 리로드 성공 시 리스트로 리다이렉트
+        return RedirectResponse(url=f"/hotcoin_list/{uno}", status_code=303)
+    else:
+        # 실패 시 에러 페이지 혹은 메시지
+        return RedirectResponse(url=f"/hotcoin_list/{uno}?error=reload_failed", status_code=303)

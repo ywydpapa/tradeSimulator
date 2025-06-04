@@ -33,19 +33,33 @@
                                     <td style="text-align: center">
                                         수집 일자
                                     </td>
-                                    <td style="text-align: center">
+                                    <td style="text-align: center; position: relative;">
                                         {{ orderbooks[0][8] }} <br> ({{ time_diff }} 이전)
+                                        {% if reloadable == "Y" %}
+                                        <button
+                                                style="position: absolute; right: 8px; top: 8px; background: none; border: none; cursor: pointer;"
+                                                title="리로드"
+                                                onclick="window.location.href='/hotcoin_reload/{{ userNo }}'">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                 fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 1 0-.908-.418A6 6 0 1 0 8 2v1z"/>
+                                                <path d="M8 1.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 0-1H8.5V2a.5.5 0 0 0-.5-.5z"/>
+                                            </svg>
+                                        </button>
+                                        {% endif %}
                                     </td>
+
                                     <td style="text-align: center">
                                         설정금액
                                     </td>
                                     <td style="text-align: center">
                                         <input type="text" id="setupamt" name="setupamt" class="form-control"
-                                                   style="width:auto;text-align: right;" value="100,000"
-                                                   oninput="limitBprice(this)" onblur="formatBpriceOnBlur(this)">
+                                               style="width:auto;text-align: right;" value="100,000"
+                                               oninput="limitBprice(this)" onblur="formatBpriceOnBlur(this)">
                                     </td>
                                     <td style="text-align: center">
-                                        <button class="form-control btn btn-primary" id="applySelectedBtn">선택 설정 적용</button>
+                                        <button class="form-control btn btn-primary" id="applySelectedBtn">선택 설정 적용
+                                        </button>
                                     </td>
                                 </tr>
                             </table>
@@ -77,7 +91,9 @@
                                 {% for orderbook in orderbooks %}
                                 <tr>
                                     <td style="text-align: center" class="setup-coin-item">{{ orderbook[2] }}</td>
-                                    <td style="text-align: center"><a href="https://upbit.com/exchange?code=CRIX.UPBIT.{{ orderbook[3] }}">{{ orderbook[3] }}</a></td>
+                                    <td style="text-align: center"><a
+                                            href="https://upbit.com/exchange?code=CRIX.UPBIT.{{ orderbook[3] }}">{{
+                                        orderbook[3] }}</a></td>
                                     <td style="text-align: right">{{ "{:,.0f}".format(orderbook[4]) }}</td>
                                     <td style="text-align: right">{{ "{:,.0f}".format(orderbook[5]) }}</td>
                                     <td style="text-align: right">{{ "{:,.0f}".format(orderbook[6]) }}</td>
@@ -89,10 +105,10 @@
                                                value="{{ orderbook[3] }}"
                                                {% for trsetup in trsetups %}
                                                {% if trsetup["coinName"] == orderbook[3] %}
-                                               disabled
-                                               {% endif %}
-                                               {% endfor %}
-                                               >
+                                        disabled
+                                        {% endif %}
+                                        {% endfor %}
+                                        >
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -131,13 +147,13 @@
 <script>
 
     $(document).ready(function () {
-     $('#listTable').DataTable({
-         "pageLength": 25,
-         "paging": true,
-        "searching": true,
-        "ordering": true,
-        "info": true
-    });
+        $('#listTable').DataTable({
+            "pageLength": 25,
+            "paging": true,
+            "searching": true,
+            "ordering": true,
+            "info": true
+        });
     });
 
     function numberWithCommas(x) {
@@ -167,7 +183,12 @@
     }
 
     async function insertsetup(coinn) {
-        const uno = {{ userNo }};
+        const uno = {
+        {
+            userNo
+        }
+    }
+        ;
         let setamontRaw = $('#setupamt').val().replace(/,/g, '');
         const setamont = parseFloat(setamontRaw);
         try {
@@ -192,18 +213,19 @@
             console.error(error);
         }
     }
+
     document.getElementById('applySelectedBtn').addEventListener('click', async function (e) {
-    e.preventDefault();
-    const checkedCoins = Array.from(document.querySelectorAll('input[name="chkYN"]:checked:not(:disabled)'));
-    if (checkedCoins.length === 0) {
-        alert('선택된 코인이 없습니다.');
-        return;
-    }
-    await Promise.all(
-        checkedCoins.map(checkbox => insertsetup(checkbox.value))
-    );
-    window.location.href = '/hotcoin_list/{{ userNo }}';
-});
+        e.preventDefault();
+        const checkedCoins = Array.from(document.querySelectorAll('input[name="chkYN"]:checked:not(:disabled)'));
+        if (checkedCoins.length === 0) {
+            alert('선택된 코인이 없습니다.');
+            return;
+        }
+        await Promise.all(
+            checkedCoins.map(checkbox => insertsetup(checkbox.value))
+        );
+        window.location.href = '/hotcoin_list/{{ userNo }}';
+    });
 
 
 </script>
