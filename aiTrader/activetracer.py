@@ -4,7 +4,9 @@ import pandas as pd
 import numpy as np
 from scipy.signal import find_peaks
 import time
+import datetime
 from prophet import Prophet
+from statsmodels.tsa.arima.model import ARIMA
 
 
 def compute_stoch_rsi(series, window=14, smooth_k=3, smooth_d=3):
@@ -102,12 +104,14 @@ def peak_trade(
     trsignal = ''
     try:
         freq = 'h' if 'h' in candle_unit else 'min'
-        future_price = predict_future_price(df, periods=3, freq=freq)
+        # future_price = predict_future_price(df, periods=3, freq=freq)
+        future_price_arima = predict_future_price_arima(df, periods=3)
         now_price = df['trade_price'].iloc[-1]
-        pred_rate = (future_price - now_price) / now_price * 100
+        pred_rate = (future_price_arima - now_price) / now_price * 100
+        pred_rate_arima = (future_price_arima - now_price) / now_price * 100 if future_price_arima is not None else None
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-        print(f"현재가: {now_price:.2f}, 3캔들 뒤 예측가: {future_price:.2f}")
-        print(f"예측 변화율: {pred_rate:.3f}%")
+        print(f"현재가: {now_price:.2f}, 3캔들 뒤 예측가: {future_price_arima:.2f}")
+        print(f"예측 변화율: {pred_rate_arima:.3f}%")
         print(f"상승봉 평균 변화율: {avg_up_rate:.3f}%")
         print(f"하강봉 평균 변화율: {avg_down_rate:.3f}%")
         # 3. 비교 및 신호 판단
@@ -336,7 +340,23 @@ def predict_future_price(df, periods=3, freq='3min'):
     future_price = forecast['yhat'].iloc[-periods:].mean()
     return future_price
 
-STOP_LOSS_RATE = -1.5 #손절 설정 -1.5%
+
+def predict_future_price_arima(df, periods=3):
+    # ARIMA는 시계열 index가 필요합니다.
+    y = df['trade_price']
+    # 간단한 (자동) 파라미터: (1,1,1) 또는 더 정교하게 pmdarima의 auto_arima로 최적화 가능
+    try:
+        model = ARIMA(y, order=(1,1,1))
+        model_fit = model.fit()
+        forecast = model_fit.forecast(steps=periods)
+        future_price = forecast.mean()  # ARIMA는 미래값이 여러개면 평균을 사용
+        return future_price
+    except Exception as e:
+        print("ARIMA 예측 실패:", e)
+        return None
+
+
+STOP_LOSS_RATE = -4.5 #손절 설정 -4.5%
 
 async def main_trade(uno):
     try:
@@ -369,9 +389,20 @@ async def main_trade(uno):
             print("지갑내 코인 : ", remaincoin)
             print("매수 평균가 :", float(avgprice))
             print("매매 전략 :", trade_state)
+            nowt = datetime.datetime.now()
+            print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
             print("3m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~3m")
             short_position = peak_trade(coinn, 1, 20, 200, '3m')
             print("short_position",short_position)
+            print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
+            print("15m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~15m")
+            mid_position = peak_trade(coinn, 1, 20, 200, '15m')
+            print("mid_position", mid_position)
+            print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
+            print("1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~1m")
+            test_position = peak_trade(coinn, 1, 20, 200, '1m')
+            print("test_position", test_position)
+            print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
             avg_price = float(avgprice)
             now_price = short_position[3]
             if avg_price == 0:
@@ -417,9 +448,9 @@ async def main_trade(uno):
 
 async def periodic_main_trade():
     while True:
-        await main_trade(1)
-        await main_trade(3)
-        await main_trade(4)
+        #await main_trade(1)
+        #await main_trade(3)
+        await main_trade(2)
         await asyncio.sleep(30)
 
 asyncio.run(periodic_main_trade())
