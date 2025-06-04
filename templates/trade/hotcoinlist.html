@@ -45,7 +45,7 @@
                                                    oninput="limitBprice(this)" onblur="formatBpriceOnBlur(this)">
                                     </td>
                                     <td style="text-align: center">
-                                        <button class="form-control btn btn-primary">선택 설정 적용</button>
+                                        <button class="form-control btn btn-primary" id="applySelectedBtn">선택 설정 적용</button>
                                     </td>
                                 </tr>
                             </table>
@@ -86,7 +86,12 @@
                                         <input type="checkbox"
                                                name="chkYN"
                                                id="chkYN{{ orderbook[2] }}"
-                                               value="Y"
+                                               value="{{ orderbook[3] }}"
+                                               {% for trsetup in trsetups %}
+                                               {% if trsetup["coinName"] == orderbook[3] %}
+                                               disabled
+                                               {% endif %}
+                                               {% endfor %}
                                                >
                                     </td>
                                 </tr>
@@ -160,6 +165,45 @@
         if (val < min) val = min;
         input.value = numberWithCommas(val);
     }
+
+    async function insertsetup(coinn) {
+        const uno = {{ userNo }};
+        let setamontRaw = $('#setupamt').val().replace(/,/g, '');
+        const setamont = parseFloat(setamontRaw);
+        try {
+            const response = await fetch(`/insertsetup/${uno}/${coinn}/${setamont}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (response.redirected) {
+            } else if (response.status === 303) {
+                const redirectUrl = response.headers.get('Location');
+                if (redirectUrl) {
+                } else {
+                }
+            } else if (response.ok) {
+            } else {
+                alert('설정 추가에 실패했습니다.');
+            }
+        } catch (error) {
+            alert('오류가 발생했습니다.');
+            console.error(error);
+        }
+    }
+    document.getElementById('applySelectedBtn').addEventListener('click', async function (e) {
+    e.preventDefault();
+    const checkedCoins = Array.from(document.querySelectorAll('input[name="chkYN"]:checked:not(:disabled)'));
+    if (checkedCoins.length === 0) {
+        alert('선택된 코인이 없습니다.');
+        return;
+    }
+    await Promise.all(
+        checkedCoins.map(checkbox => insertsetup(checkbox.value))
+    );
+    window.location.href = '/hotcoin_list/{{ userNo }}';
+});
 
 
 </script>

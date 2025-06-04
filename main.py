@@ -983,9 +983,10 @@ async def hotcoinlist(request: Request, uno: int, user_session: int = Depends(re
         minutes = (diff.seconds % 3600) // 60
         seconds = diff.seconds % 60
         time_diff = f"{days}일 {hours}시간 {minutes}분 {seconds}초 "
+        trsetups = await get_trsetups(uno,db)
         return templates.TemplateResponse("/trade/hotcoinlist.html",
                                           {"request": request, "userNo": uno, "userName": usern, "setkey": setkey,
-                                           "orderbooks": orderbooks, "time_diff": time_diff})
+                                           "orderbooks": orderbooks, "time_diff": time_diff, "trsetups": trsetups })
     except Exception as e:
         print("Get Hotcoins Error !!", e)
 
