@@ -426,6 +426,17 @@ async def get_hotcoins(request, db):
         return False
 
 
+async def get_hotamt(request, db):
+    try:
+        query = text("select * from tradeAmt order by regDate desc limit 1")
+        result = await db.execute(query)
+        hotamt = result.fetchone()
+        return hotamt
+    except Exception as e:
+        print("Error!!", e)
+        return False
+
+
 async def get_current_balance(uno, db: AsyncSession = Depends(get_db)):
     try:
         query = text("SELECT * FROM trWallet where userNo = :uno and attrib not like :attxx order by currency ")
@@ -975,6 +986,7 @@ async def hotcoinlist(request: Request, uno: int, user_session: int = Depends(re
     setkey = request.session.get("setupKey")
     try:
         orderbooks = await get_hotcoins(request, db)
+        hotamt = await get_hotamt(request, db)
         gettime = orderbooks[0][8]
         nowtt = datetime.now()
         diff = nowtt - gettime
@@ -996,6 +1008,7 @@ async def hotcoinlist(request: Request, uno: int, user_session: int = Depends(re
                 "time_diff": time_diff,
                 "trsetups": trsetups,
                 "reloadable": is_reloadable,
+                "hotamt": hotamt,
             }
         )
     except Exception as e:
