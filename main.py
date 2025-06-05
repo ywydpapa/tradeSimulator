@@ -415,6 +415,18 @@ async def rest_add_orderbook_amt(datetag, idxrow, coinn, bidamt, askamt, totalam
         return False
 
 
+async def rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD, db):
+    try:
+        query = text("INSERT into predictPrice (dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD) values "
+                     ":dateTag,:coinName,:avgUprate,:avgDownrate,:currentPrice,:predictA,:predictB,:predictC,:predictD,:rateA,:rateB,:rateC,:rateD")
+        await db.execute(query,{"dateTag":dateTag, "coinName": coinName, "avgUprate": avgUprate, "avgDownrate": avgDownrate, "currentPrice": currentPrice, "predictA": predictA,"predictB": predictB,"predictC": predictC,"predictD": predictD, "rateA":rateA,"rateB":rateB,"rateC":rateC,"rateD":rateD})
+        await db.commit()
+        return True
+    except Exception as e:
+        print("Error!!", e)
+        return False
+
+
 async def get_hotcoins(request, db):
     try:
         query = text("SELECT * FROM orderbookAmt where dateTag = (select max(dateTag) from orderbookAmt)")
@@ -1245,3 +1257,12 @@ async def hotcoin_reload(uno: int, request: Request):
     else:
         # 실패 시 에러 페이지 혹은 메시지
         return RedirectResponse(url=f"/hotcoin_list/{uno}?error=reload_failed", status_code=303)
+
+
+@app.get("/rest_add_predict/{dateTag}/{coinName}/{avgUprate}/{avgDownrate}/{currentPrice}/{predictA}/{predictB}/{predictC}/{predictD}/{rateA}/{rateB}/{rateC}/{rateD}")
+async def rest_add_predict(dateTag:str,coinName:str,avgUprate:float,avgDownrate:float,currentPrice:float,predictA:float,predictB:float,predictC:float,predictD:float,rateA:float,rateB:float,rateC:float,rateD:float):
+    result = await rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD)
+    if result:
+        return True
+    else:
+        return False

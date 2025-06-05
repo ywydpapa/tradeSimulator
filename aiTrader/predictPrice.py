@@ -202,11 +202,11 @@ def peak_trade(
         print("예측 실패:", e)
 
 
-coinn = 'KRW-XRP'
+coinn = 'KRW-WCT'
 while True:
     nowt = datetime.datetime.now()
     print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
-    print("1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~1m")
-    first_position = peak_trade(coinn, 1, 20, 200, '1m')
+    print("4h~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~4h")
+    first_position = peak_trade(coinn, 1, 20, 200, '4h')
     print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
     time.sleep(60)
