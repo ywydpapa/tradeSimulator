@@ -230,6 +230,14 @@ while True:
             fpst = peak_trade(coinn, 1, 20, 200, '4h')
             intv = '4h'
             add_predictPrice(datetag,fpst[0], fpst[1], fpst[2], fpst[3], fpst[4], fpst[5], fpst[6], 0,fpst[7], fpst[8], fpst[9], 0,intv)
+            fpst = peak_trade(coinn, 1, 20, 200, '30m')
+            intv = '30m'
+            add_predictPrice(datetag, fpst[0], fpst[1], fpst[2], fpst[3], fpst[4], fpst[5], fpst[6], 0, fpst[7],
+                             fpst[8], fpst[9], 0, intv)
+            fpst = peak_trade(coinn, 1, 20, 200, '5m')
+            intv = '5m'
+            add_predictPrice(datetag, fpst[0], fpst[1], fpst[2], fpst[3], fpst[4], fpst[5], fpst[6], 0, fpst[7],
+                             fpst[8], fpst[9], 0, intv)
             print(f'{coinn} 예측 완료')
             time.sleep(0.3)
         except Exception as e:
