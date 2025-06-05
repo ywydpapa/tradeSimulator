@@ -105,8 +105,8 @@ def predict_price_xgb(df, periods=3):
     pred = model.predict(X.tail(periods))
     return pred.mean()
 
-def add_predictPrice(datetag,coinn,aupr,adownr,cprice,pra,prb,prc,prd,rta,rtb,rtc,rtd):
-    url = f'http://ywydpapa.iptime.org:8000/rest_add_predict/{datetag}/{coinn}/{aupr}/{adownr}/{cprice}/{pra}/{prb}/{prc}/{prd}/{rta}/{rtb}/{rtc}/{rtd}'
+def add_predictPrice(datetag,coinn,aupr,adownr,cprice,pra,prb,prc,prd,rta,rtb,rtc,rtd,intv):
+    url = f'http://ywydpapa.iptime.org:8000/rest_add_predict/{datetag}/{coinn}/{aupr}/{adownr}/{cprice}/{pra}/{prb}/{prc}/{prd}/{rta}/{rtb}/{rtc}/{rtd}/{intv}'
     response = requests.get(url)
     return response
 
@@ -208,13 +208,31 @@ def peak_trade(
         print("예측 실패:", e)
 
 
-coinn = 'KRW-WCT'
+def get_upbit_krw_coins():
+    url = "https://api.upbit.com/v1/market/all"
+    headers = {"accept": "application/json"}
+    response = requests.get(url, headers=headers)
+    markets = response.json()
+    # KRW 마켓만 추출
+    krw_coins = [market['market'] for market in markets if market['market'].startswith('KRW-')]
+    return krw_coins
+
+
+coin_list = get_upbit_krw_coins()
+
 while True:
     nowt = datetime.datetime.now()
     datetag = nowt.strftime("%Y%m%d%H%M%S")
     print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
     print("4h~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~4h")
-    fpst = peak_trade(coinn, 1, 20, 200, '4h')
-    add_predictPrice(datetag,fpst[0],fpst[1],fpst[2],fpst[3],fpst[4],fpst[5],fpst[6],0,fpst[7],fpst[8],fpst[9],0)
-    print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
-    time.sleep(60)
+    for coinn in coin_list:
+        try:
+            fpst = peak_trade(coinn, 1, 20, 200, '4h')
+            intv = '4h'
+            add_predictPrice(datetag,fpst[0], fpst[1], fpst[2], fpst[3], fpst[4], fpst[5], fpst[6], 0,fpst[7], fpst[8], fpst[9], 0,intv)
+            print(f'{coinn} 예측 완료')
+            time.sleep(0.3)
+        except Exception as e:
+            print(f'<UNK> <UNK>: {e}')
+        print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
+    time.sleep(3600)
