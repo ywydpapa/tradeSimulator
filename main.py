@@ -437,6 +437,17 @@ async def get_hotcoins(request, db):
         return False
 
 
+async def get_predicts(request, db):
+    try:
+        query = text("SELECT * FROM predictPrice where dateTag = (select max(dateTag) from predictPrice)")
+        result = await db.execute(query)
+        predicts = result.fetchall()
+        return predicts
+    except Exception as e:
+        print("Error!!", e)
+        return False
+
+
 async def get_hotamt(request, db):
     try:
         query = text("select * from tradeAmt order by regDate desc limit 1")
@@ -1265,3 +1276,36 @@ async def rest_add_predict(request:Request,dateTag:str,coinName:str,avgUprate:fl
         return True
     else:
         return False
+
+
+@app.get("/predict_list/{uno}")
+async def predictlist(request: Request, uno: int, user_session: int = Depends(require_login),
+                      db: AsyncSession = Depends(get_db)):
+    predicts = None
+    if uno != user_session:
+        return RedirectResponse(url="/", status_code=303)
+    usern = request.session.get("user_Name")
+    setkey = request.session.get("setupKey")
+    try:
+        predicts = await get_predicts(request, db)
+        gettime = predicts[0][15]
+        nowtt = datetime.now()
+        diff = nowtt - gettime
+        days = diff.days
+        hours = diff.seconds // 3600
+        minutes = (diff.seconds % 3600) // 60
+        seconds = diff.seconds % 60
+        time_diff = f"{days}일 {hours}시간 {minutes}분 {seconds}초 "
+        return templates.TemplateResponse(
+            "/trade/predictlist.html",
+            {
+                "request": request,
+                "userNo": uno,
+                "userName": usern,
+                "setkey": setkey,
+                "predicts": predicts,
+                "time_diff": time_diff,
+            }
+        )
+    except Exception as e:
+        print("Get Hotcoins Error !!", e)

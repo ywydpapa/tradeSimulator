@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include '/comm/adheader.html' %}
+</head>
+<body id="page-top">
+<!-- Page Wrapper -->
+<div id="wrapper">
+    {% include '/comm/sidebar.html' %}
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            {% include '/comm/adtopbar.html' %}
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                <!-- DataTales Example -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h5 class="m-0 font-weight-bold text-primary">가격변동 예상목록</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" width="100%" cellspacing="0">
+                                <colgroup>
+                                    <col width="50%"/>
+                                    <col width="50%"/>
+                                </colgroup>
+                                <tr>
+                                    <td style="text-align: center">
+                                        수집 일자
+                                    </td>
+                                    <td style="text-align: center; position: relative;">
+                                        {{ predicts[0][15] }} <br> ({{ time_diff }} 이전)
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="listTable" width="100%" cellspacing="0">
+                                <thead style="text-align: center">
+                                <tr style="text-align: center">
+                                    <td style="text-align: center">코인명</td>
+                                    <td>현재가</td>
+                                    <td>평균상승율</td>
+                                    <td>평균하강율</td>
+                                    <td>수집단위</td>
+                                    <td>예측가A</td>
+                                    <td>변동률A</td>
+                                    <td>예측가B</td>
+                                    <td>변동률B</td>
+                                    <td>예측가C</td>
+                                    <td>변동률C</td>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% if predicts %}
+                                {% for orderbook in predicts %}
+                                <tr>
+                                    <td style="text-align: center"><a
+                                            href="https://upbit.com/exchange?code=CRIX.UPBIT.{{ orderbook[2] }}">{{
+                                        orderbook[2] }}</a></td>
+                                    <td style="text-align: right">{{ "{:,.2f}".format(orderbook[5]) }}</td>
+                                    <td style="text-align: right">{{ "{:.4f}".format(orderbook[3]) }}</td>
+                                    <td style="text-align: right">{{ "{:.4f}".format(orderbook[4]) }}</td>
+                                    <td style="text-align: right">{{ orderbook[14] }}</td>
+                                    <td style="text-align: right">{{ "{:,.6f}".format(orderbook[6]) }}</td>
+                                    <td style="text-align: right">{{ "{:.4f}".format(orderbook[10]) }}</td>
+                                    <td style="text-align: right">{{ "{:,.6f}".format(orderbook[7]) }}</td>
+                                    <td style="text-align: right">{{ "{:.4f}".format(orderbook[11]) }}</td>
+                                    <td style="text-align: right">{{ "{:,.6f}".format(orderbook[8]) }}</td>
+                                    <td style="text-align: right">{{ "{:.4f}".format(orderbook[12]) }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /.container-fluid -->
+        </div>
+        <!-- End of Main Content -->
+        <!-- Footer -->
+        <footer class="sticky-footer bg-white">
+            <div class="container my-auto">
+                <div class="copyright text-center my-auto">
+                    <span>Copyright &copy; SoftCore 2025</span>
+                </div>
+            </div>
+        </footer>
+        <!-- End of Footer -->
+    </div>
+    <!-- End of Content Wrapper -->
+</div>
+<!-- End of Page Wrapper -->
+<!-- Scroll to Top Button-->
+<a class="scroll-to-top rounded" href="#page-top">
+    <i class="fas fa-angle-up"></i>
+</a>
+<!-- Bootstrap core JavaScript-->
+
+{% include '/comm/adscript.html' %}
+{% include '/comm/adscripttable.html' %}
+</body>
+<script>
+
+    $(document).ready(function () {
+        $('#listTable').DataTable({
+            "pageLength": 25,
+            "paging": true,
+            "searching": true,
+            "ordering": true,
+            "info": true
+        });
+    });
+
+    function numberWithCommas(x) {
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function numberNoneCommas(x) {
+        return x.toString().replace(/[\D\s\._\-]+/g, "");
+    }
+
+    function limitBprice(input) {
+        let raw = input.value.replace(/[^0-9]/g, '');
+        let max = 5000000;
+        let val = parseInt(raw, 10) || 0;
+        if (val > max) val = max;
+        input.value = val === 0 ? '' : val; // 0이면 빈 값으로
+    }
+
+    function formatBpriceOnBlur(input) {
+        let raw = input.value.replace(/[^0-9]/g, '');
+        let max = 5000000;
+        let min = 5000;
+        let val = parseInt(raw, 10) || 0;
+        if (val > max) val = max;
+        if (val < min) val = min;
+        input.value = numberWithCommas(val);
+    }
+
+    async function insertsetup(coinn) {
+        const uno = {{ userNo }};
+        let setamontRaw = $('#setupamt').val().replace(/,/g, '');
+        const setamont = parseFloat(setamontRaw);
+        try {
+            const response = await fetch(`/insertsetup/${uno}/${coinn}/${setamont}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (response.redirected) {
+            } else if (response.status === 303) {
+                const redirectUrl = response.headers.get('Location');
+                if (redirectUrl) {
+                } else {
+                }
+            } else if (response.ok) {
+            } else {
+                alert('설정 추가에 실패했습니다.');
+            }
+        } catch (error) {
+            alert('오류가 발생했습니다.');
+            console.error(error);
+        }
+    }
+
+    document.getElementById('applySelectedBtn').addEventListener('click', async function (e) {
+        e.preventDefault();
+        const checkedCoins = Array.from(document.querySelectorAll('input[name="chkYN"]:checked:not(:disabled)'));
+        if (checkedCoins.length === 0) {
+            alert('선택된 코인이 없습니다.');
+            return;
+        }
+        await Promise.all(
+            checkedCoins.map(checkbox => insertsetup(checkbox.value))
+        );
+        window.location.href = '/hotcoin_list/{{ userNo }}';
+    });
+
+
+</script>
+</html>
