@@ -106,7 +106,7 @@ def predict_price_xgb(df, periods=3):
     return pred.mean()
 
 def add_predictPrice(datetag,coinn,aupr,adownr,cprice,pra,prb,prc,prd,rta,rtb,rtc,rtd):
-    url = f'http://127.0.0.1:8000/rest_add_predict/{datetag}/{coinn}/{aupr}/{adownr}/{cprice}/{pra}/{prb}/{prc}/{prd}/{rta}/{rtb}/{rtc}/{rtd}'
+    url = f'http://ywydpapa.iptime.org:8000/rest_add_predict/{datetag}/{coinn}/{aupr}/{adownr}/{cprice}/{pra}/{prb}/{prc}/{prd}/{rta}/{rtb}/{rtc}/{rtd}'
     response = requests.get(url)
     return response
 
