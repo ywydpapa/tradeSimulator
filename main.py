@@ -415,10 +415,9 @@ async def rest_add_orderbook_amt(datetag, idxrow, coinn, bidamt, askamt, totalam
         return False
 
 
-async def rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD, db):
+async def rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD,db):
     try:
-        query = text("INSERT into predictPrice (dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD) values "
-                     ":dateTag,:coinName,:avgUprate,:avgDownrate,:currentPrice,:predictA,:predictB,:predictC,:predictD,:rateA,:rateB,:rateC,:rateD")
+        query = text("INSERT into predictPrice (dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD) values (:dateTag,:coinName,:avgUprate,:avgDownrate,:currentPrice,:predictA,:predictB,:predictC,:predictD,:rateA,:rateB,:rateC,:rateD)")
         await db.execute(query,{"dateTag":dateTag, "coinName": coinName, "avgUprate": avgUprate, "avgDownrate": avgDownrate, "currentPrice": currentPrice, "predictA": predictA,"predictB": predictB,"predictC": predictC,"predictD": predictD, "rateA":rateA,"rateB":rateB,"rateC":rateC,"rateD":rateD})
         await db.commit()
         return True
@@ -1260,8 +1259,8 @@ async def hotcoin_reload(uno: int, request: Request):
 
 
 @app.get("/rest_add_predict/{dateTag}/{coinName}/{avgUprate}/{avgDownrate}/{currentPrice}/{predictA}/{predictB}/{predictC}/{predictD}/{rateA}/{rateB}/{rateC}/{rateD}")
-async def rest_add_predict(dateTag:str,coinName:str,avgUprate:float,avgDownrate:float,currentPrice:float,predictA:float,predictB:float,predictC:float,predictD:float,rateA:float,rateB:float,rateC:float,rateD:float):
-    result = await rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD)
+async def rest_add_predict(request:Request,dateTag:str,coinName:str,avgUprate:float,avgDownrate:float,currentPrice:float,predictA:float,predictB:float,predictC:float,predictD:float,rateA:float,rateB:float,rateC:float,rateD:float,db: AsyncSession = Depends(get_db)):
+    result = await rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD,db)
     if result:
         return True
     else:

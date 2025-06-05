@@ -105,6 +105,11 @@ def predict_price_xgb(df, periods=3):
     pred = model.predict(X.tail(periods))
     return pred.mean()
 
+def add_predictPrice(datetag,coinn,aupr,adownr,cprice,pra,prb,prc,prd,rta,rtb,rtc,rtd):
+    url = f'http://127.0.0.1:8000/rest_add_predict/{datetag}/{coinn}/{aupr}/{adownr}/{cprice}/{pra}/{prb}/{prc}/{prd}/{rta}/{rtb}/{rtc}/{rtd}'
+    response = requests.get(url)
+    return response
+
 
 def peak_trade(
         ticker='KRW-BTC',
@@ -198,6 +203,7 @@ def peak_trade(
             print("예측 변화율이 평균 변화율 범위 내 → 특별 신호 없음 (Prophet 기준)")
             trsignal = 'HOLD'
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        return ticker, avg_up_rate,avg_down_rate,now_price, future_price, future_price_arima, future_price_xgb, pred_rate, pred_rate_arima, pred_rate_xgb
     except Exception as e:
         print("예측 실패:", e)
 
@@ -205,8 +211,10 @@ def peak_trade(
 coinn = 'KRW-WCT'
 while True:
     nowt = datetime.datetime.now()
+    datetag = nowt.strftime("%Y%m%d%H%M%S")
     print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
     print("4h~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~4h")
-    first_position = peak_trade(coinn, 1, 20, 200, '4h')
+    fpst = peak_trade(coinn, 1, 20, 200, '4h')
+    add_predictPrice(datetag,fpst[0],fpst[1],fpst[2],fpst[3],fpst[4],fpst[5],fpst[6],0,fpst[7],fpst[8],fpst[9],0)
     print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
     time.sleep(60)
