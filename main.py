@@ -415,10 +415,10 @@ async def rest_add_orderbook_amt(datetag, idxrow, coinn, bidamt, askamt, totalam
         return False
 
 
-async def rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD,db):
+async def rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD,intV,db):
     try:
-        query = text("INSERT into predictPrice (dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD) values (:dateTag,:coinName,:avgUprate,:avgDownrate,:currentPrice,:predictA,:predictB,:predictC,:predictD,:rateA,:rateB,:rateC,:rateD)")
-        await db.execute(query,{"dateTag":dateTag, "coinName": coinName, "avgUprate": avgUprate, "avgDownrate": avgDownrate, "currentPrice": currentPrice, "predictA": predictA,"predictB": predictB,"predictC": predictC,"predictD": predictD, "rateA":rateA,"rateB":rateB,"rateC":rateC,"rateD":rateD})
+        query = text("INSERT into predictPrice (dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD, interval) values (:dateTag,:coinName,:avgUprate,:avgDownrate,:currentPrice,:predictA,:predictB,:predictC,:predictD,:rateA,:rateB,:rateC,:rateD, :interval)")
+        await db.execute(query,{"dateTag":dateTag, "coinName": coinName, "avgUprate": avgUprate, "avgDownrate": avgDownrate, "currentPrice": currentPrice, "predictA": predictA,"predictB": predictB,"predictC": predictC,"predictD": predictD, "rateA":rateA,"rateB":rateB,"rateC":rateC,"rateD":rateD,"interval":intV })
         await db.commit()
         return True
     except Exception as e:
@@ -1258,9 +1258,9 @@ async def hotcoin_reload(uno: int, request: Request):
         return RedirectResponse(url=f"/hotcoin_list/{uno}?error=reload_failed", status_code=303)
 
 
-@app.get("/rest_add_predict/{dateTag}/{coinName}/{avgUprate}/{avgDownrate}/{currentPrice}/{predictA}/{predictB}/{predictC}/{predictD}/{rateA}/{rateB}/{rateC}/{rateD}")
-async def rest_add_predict(request:Request,dateTag:str,coinName:str,avgUprate:float,avgDownrate:float,currentPrice:float,predictA:float,predictB:float,predictC:float,predictD:float,rateA:float,rateB:float,rateC:float,rateD:float,db: AsyncSession = Depends(get_db)):
-    result = await rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD,db)
+@app.get("/rest_add_predict/{dateTag}/{coinName}/{avgUprate}/{avgDownrate}/{currentPrice}/{predictA}/{predictB}/{predictC}/{predictD}/{rateA}/{rateB}/{rateC}/{rateD}/{intv}")
+async def rest_add_predict(request:Request,dateTag:str,coinName:str,avgUprate:float,avgDownrate:float,currentPrice:float,predictA:float,predictB:float,predictC:float,predictD:float,rateA:float,rateB:float,rateC:float,rateD:float,intv:str, db: AsyncSession = Depends(get_db)):
+    result = await rest_predict(dateTag,coinName,avgUprate,avgDownrate,currentPrice,predictA,predictB,predictC,predictD,rateA,rateB,rateC,rateD,intv, db)
     if result:
         return True
     else:
