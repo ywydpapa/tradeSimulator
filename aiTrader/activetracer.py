@@ -7,6 +7,7 @@ import time
 import datetime
 from prophet import Prophet
 from statsmodels.tsa.arima.model import ARIMA
+from lightgbm import LGBMRegressor
 
 
 def compute_stoch_rsi(series, window=14, smooth_k=3, smooth_d=3):
@@ -106,20 +107,21 @@ def peak_trade(
         freq = 'h' if 'h' in candle_unit else 'min'
         # future_price = predict_future_price(df, periods=3, freq=freq)
         future_price_arima = predict_future_price_arima(df, periods=3)
+        future_price_xgb = predict_price_xgb(df, periods=3)
         now_price = df['trade_price'].iloc[-1]
-        pred_rate = (future_price_arima - now_price) / now_price * 100
-        pred_rate_arima = (future_price_arima - now_price) / now_price * 100 if future_price_arima is not None else None
+        pred_rate = (future_price_xgb - now_price) / now_price * 100
+        pred_rate_xgb = (future_price_xgb - now_price) / now_price * 100 if future_price_xgb is not None else None
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
         print(f"현재가: {now_price:.2f}, 3캔들 뒤 예측가: {future_price_arima:.2f}")
-        print(f"예측 변화율: {pred_rate_arima:.3f}%")
+        print(f"예측 변화율: {pred_rate_xgb:.3f}%")
         print(f"상승봉 평균 변화율: {avg_up_rate:.3f}%")
         print(f"하강봉 평균 변화율: {avg_down_rate:.3f}%")
         # 3. 비교 및 신호 판단
-        if pred_rate > avg_up_rate:
+        if pred_rate_xgb > avg_up_rate:
             print("예측 변화율이 상승봉 평균 변화율보다 높음 → 강한 매수 신호!")
             trsignal = 'BUY'
             # 필요시 trguide = 'BUY'
-        elif pred_rate < avg_down_rate:
+        elif pred_rate_xgb <= avg_down_rate:
             print("예측 변화율이 하강봉 평균 변화율보다 낮음 → 강한 매도 신호!")
             trsignal = 'SELL'
             # 필요시 trguide = 'SELL'
@@ -356,6 +358,19 @@ def predict_future_price_arima(df, periods=3):
         return None
 
 
+def predict_price_xgb(df, periods=3):
+    import xgboost as xgb
+    df['lag_1'] = df['trade_price'].shift(1)
+    df['ma_3'] = df['trade_price'].rolling(3).mean()
+    df = df.dropna()
+    X = df[['lag_1', 'ma_3']]
+    y = df['trade_price']
+    model = xgb.XGBRegressor()
+    model.fit(X, y)
+    pred = model.predict(X.tail(periods))
+    return pred.mean()
+
+
 STOP_LOSS_RATE = -4.5 #손절 설정 -4.5%
 
 async def main_trade(uno):
@@ -391,8 +406,8 @@ async def main_trade(uno):
             print("매매 전략 :", trade_state)
             nowt = datetime.datetime.now()
             print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
-            print("3m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~3m")
-            short_position = peak_trade(coinn, 1, 20, 200, '3m')
+            print("3m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~5m")
+            short_position = peak_trade(coinn, 1, 20, 200, '5m')
             print("short_position",short_position)
             print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
             print("15m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~15m")
