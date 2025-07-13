@@ -51,7 +51,7 @@ def hotmain():
     now = datetime.now()
     datetag = now.strftime("%Y%m%d%H%M%S")
     idxr = 0
-    for r in sorted_results[:25]:
+    for r in sorted_results[:30]:
         idxr += 1
         print(f"{r['market']}: 매수금액 {r['total_bid_amount']:,.0f}원, 매도금액 {r['total_ask_amount']:,.0f}원, 비율 {r['total_diff']:,.0f}%")
         add_orderbook( datetag, idxr, r['market'], int(r['total_bid_amount']), int(r['total_ask_amount']), int(r['total_amount']), r['total_diff'])
