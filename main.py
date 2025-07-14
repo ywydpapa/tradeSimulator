@@ -1313,14 +1313,36 @@ async def predictlist(request: Request, uno: int, user_session: int = Depends(re
 @app.get("/phapp/mlogin/{phoneno}/{passwd}")
 async def mlogin(phoneno: str,passwd:str, db: AsyncSession = Depends(get_db)):
     try:
-        query = text("SELECT userNo, userName,setupKey from trUser where userId = :phoneno and userPasswd = :passwd")
+        query = text("SELECT userNo, userName,setupKey from trUser where userId = :phoneno and userPasswd = PASSWORD(:passwd)")
         result = await db.execute(query, {"phoneno": phoneno, "passwd": passwd})
         rows = result.fetchone()
         if rows is None:
             return {"error": "No data found for the given data."}
         result = {"userno": rows[0], "username": rows[1], "setupkey": rows[2]}
-        print(result)
     except:
         print("mLogin error")
     finally:
         return result
+
+@app.get("/phapp/hotcoinlist")
+async def hotcoins(db: AsyncSession = Depends(get_db)):
+    try:
+        query = text("SELECT * FROM orderbookAmt where dateTag = (select max(dateTag) from orderbookAmt)")
+        result = await db.execute(query)
+        rows = result.fetchall()
+        orderbooks = [
+            {
+                "dateTag":row[1],
+                "idxRow":row[2],
+                "coinName":row[3],
+                "bidAmt":row[4],
+                "askAmt":row[5],
+                "totalAmt":row[6],
+                "amtDiff":row[7]
+            }
+            for row in rows
+        ]
+        return orderbooks
+    except Exception as e:
+        print("Get Hotcoins Error !!", e)
+        return JSONResponse(status_code=500, content={"error": str(e)})
