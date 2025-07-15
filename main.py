@@ -1346,3 +1346,26 @@ async def hotcoins(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         print("Get Hotcoins Error !!", e)
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/phapp/tradelog/{uno}")
+async def tradelog(uno: int, db: AsyncSession = Depends(get_db)):
+    mycoins = None
+    try:
+        query = text("SELECT changeType, currency,unitPrice,inAmt,outAmt,remainAmt,regDate FROM trWallet where linkNo = (select max(linkNo) from trWallet where userNo = :uno) order by regDate asc")
+        result = await db.execute(query, {"uno": uno})
+        rows = result.fetchall()
+        mycoins = [{
+            "changeType":row[0],
+            "currency":row[1],
+            "unitPrice":row[2],
+            "inAmt":row[3],
+            "outAmt":row[4],
+            "remainAmt":row[5],
+            "regDate":row[6]
+        }
+            for row in rows
+        ]
+    except Exception as e:
+        print("Init Error !!", e)
+    return mycoins
