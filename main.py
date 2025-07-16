@@ -1389,6 +1389,7 @@ async def phapp_tradesetup(uno: int, db: AsyncSession = Depends(get_db)):
         query2 = text("SELECT changeType, currency,unitPrice,inAmt,outAmt,remainAmt,regDate FROM trWallet where userNo = :uno and attrib not like :attxx order by currency ")
         result2 = await db.execute(query2, {"uno": uno, "attxx": "%XXX%"})
         rows2 = result2.fetchall()
+        print(rows2)
         mycoins = [{
             "changeType": row2[0],
             "currency": row2[1],
