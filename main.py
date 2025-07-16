@@ -1389,7 +1389,6 @@ async def phapp_tradesetup(uno: int, db: AsyncSession = Depends(get_db)):
         query2 = text("SELECT changeType, currency,unitPrice,inAmt,outAmt,remainAmt,regDate FROM trWallet where userNo = :uno and attrib not like :attxx order by currency ")
         result2 = await db.execute(query2, {"uno": uno, "attxx": "%XXX%"})
         rows2 = result2.fetchall()
-        print(rows2)
         mycoins = [{
             "changeType": row2[0],
             "currency": row2[1],
@@ -1399,6 +1398,7 @@ async def phapp_tradesetup(uno: int, db: AsyncSession = Depends(get_db)):
             "remainAmt": row2[5],
             "regDate": row2[6]
         } for row2 in rows2]
-        return setups, mycoins
+        cprices = await get_current_prices()
+        return setups, mycoins, cprices
     except Exception as e:
         print("Init Error !!", e)
