@@ -1390,14 +1390,14 @@ async def phapp_tradesetup(uno: int, db: AsyncSession = Depends(get_db)):
         result2 = await db.execute(query2, {"uno": uno, "attxx": "%XXX%"})
         rows2 = result2.fetchall()
         mycoins = [{
-            "changeType": row[4],
-            "currency": row[5],
-            "unitPrice": row[6],
-            "inAmt": row[7],
-            "outAmt": row[8],
-            "remainAmt": row[9],
-            "regDate": row[10]
-        } for row in rows2]
+            "changeType": row2[4],
+            "currency": row2[5],
+            "unitPrice": row2[6],
+            "inAmt": row2[7],
+            "outAmt": row2[8],
+            "remainAmt": row2[9],
+            "regDate": row2[10]
+        } for row2 in rows2]
         return setups, mycoins
     except Exception as e:
         print("Init Error !!", e)
