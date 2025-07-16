@@ -1369,3 +1369,35 @@ async def tradelog(uno: int, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         print("Init Error !!", e)
     return mycoins
+
+@app.get("/phapp/tradesetup/{uno}")
+async def phapp_tradesetup(uno: int, db: AsyncSession = Depends(get_db)):
+    setups = None
+    try:
+        query = text("SELECT * FROM polarisSets where userNo = :uno and attrib not like :attxx")
+        result = await db.execute(query, {"uno": uno, "attxx": "%XXX%"})
+        rows = result.fetchall()
+        setups = [
+            {
+                "coinName":row[2],
+                "stepAmt":row[3],
+                "tradeType":row[4],
+                "maxAmt":row[5],
+                "useYN":row[6]
+            } for row in rows
+        ]
+        query2 = text("SELECT * FROM trWallet where userNo = :uno and attrib not like :attxx order by currency ")
+        result2 = await db.execute(query2, {"uno": uno, "attxx": "%XXX%"})
+        rows2 = result2.fetchall()
+        mycoins = [{
+            "changeType": row[0],
+            "currency": row[1],
+            "unitPrice": row[2],
+            "inAmt": row[3],
+            "outAmt": row[4],
+            "remainAmt": row[5],
+            "regDate": row[6]
+        } for row in rows2]
+        return setups, mycoins
+    except Exception as e:
+        print("Init Error !!", e)
