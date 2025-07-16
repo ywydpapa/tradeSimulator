@@ -1386,17 +1386,17 @@ async def phapp_tradesetup(uno: int, db: AsyncSession = Depends(get_db)):
                 "useYN":row[6]
             } for row in rows
         ]
-        query2 = text("SELECT * FROM trWallet where userNo = :uno and attrib not like :attxx order by currency ")
+        query2 = text("SELECT changeType, currency,unitPrice,inAmt,outAmt,remainAmt,regDate FROM trWallet where userNo = :uno and attrib not like :attxx order by currency ")
         result2 = await db.execute(query2, {"uno": uno, "attxx": "%XXX%"})
         rows2 = result2.fetchall()
         mycoins = [{
-            "changeType": row2[4],
-            "currency": row2[5],
-            "unitPrice": row2[6],
-            "inAmt": row2[7],
-            "outAmt": row2[8],
-            "remainAmt": row2[9],
-            "regDate": row2[10]
+            "changeType": row2[0],
+            "currency": row2[1],
+            "unitPrice": row2[2],
+            "inAmt": row2[3],
+            "outAmt": row2[4],
+            "remainAmt": row2[5],
+            "regDate": row2[6]
         } for row2 in rows2]
         return setups, mycoins
     except Exception as e:
