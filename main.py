@@ -678,6 +678,10 @@ async def logout(request: Request):
     request.session.clear()  # 세션 삭제
     return RedirectResponse(url="/")
 
+@app.get("/privacy")
+async def privacy(request: Request):
+    return templates.TemplateResponse("/privacy/privacy.html", {"request": request})
+
 
 @app.post("/balanceinit/{uno}/{iniamt}")
 async def init_balance(request: Request, uno: int, iniamt: float, db: AsyncSession = Depends(get_db)):
@@ -920,8 +924,6 @@ async def restwallet(request: Request, uno: int, db: AsyncSession = Depends(get_
     try:
         myassets = await get_current_balance(uno, db)
         wallet_list, wallet_dict = myassets
-
-        # 튜플을 리스트로, datetime은 문자열로 변환
         wallet_list = [tuple_to_list_with_datetime(row) for row in wallet_list]
 
         return JSONResponse({
